@@ -9,7 +9,8 @@
 #define FUNCONF_SYSTEM_CORE_CLOCK 48000000
 #define FUNCONF_SYSTICK_USE_HCLK 1
 
-// printf デバッグは使わない(PD5 を USART1 TX に使うので、DEBUGPRINTF/UARTPRINTF とは両立しない)
+// printf デバッグは使わない(UARTPRINTF は PD5 を使い、J4M6 では SWIO と同じピン。通信は PD6 の
+// USART1 を使うので両立しない)
 #define FUNCONF_USE_DEBUGPRINTF 0
 #define FUNCONF_USE_UARTPRINTF 0
 

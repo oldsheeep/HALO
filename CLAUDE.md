@@ -18,7 +18,7 @@
   - `ci` GitHub Actions・スクリプト / `chore` その他
   - `hotfix` develop を経由せず main に即時反映する緊急修正(下記)
 - `<scope>`: 対象の機能 = トップレベルディレクトリ名から `halo-` を除いたもの。複数にまたがる場合は主となるものを選ぶ。リポジトリ全体なら `repo`。
-  - 例: `halo-controller-ch32v003` → `controller-ch32v003`、`halo-controller` → `controller`
+  - 例: `halo-controller-ch32v003` → `controller-ch32v003`、`halo-controller` → `controller`、`halo-link` → `link`
 - `<summary>`: 内容を表す短い英語の kebab-case(小文字・数字・ハイフンのみ)
 
 例:

@@ -14,6 +14,8 @@ description: HALO の CI/CD(GitHub Actions と pre-commit)の仕組みと、デ�
 | Auto PR to main | `.github/workflows/auto-pr-to-main.yml` | develop への push | develop → main の PR を作成・更新し、`scope:<scope>` label を付ける |
 | Auto PR for hotfix | `.github/workflows/auto-pr-hotfix.yml` | `hotfix/**` への push | main 向けの PR を作成・更新し、`hotfix` と `scope:<scope>` label を付ける |
 | Sync main to develop | `.github/workflows/sync-main-to-develop.yml` | main への push | develop に無い main のコミット(hotfix)があれば、main → develop の PR を作る |
+| Test scripts | `.github/workflows/test-scripts.yml` | `scripts/` `halo-*/deps.txt` を変える PR | `scripts/test-changed-dirs.sh` を実行 |
+| Test halo-link | `.github/workflows/test-halo-link.yml` | `halo-link/**` の PR・push | ホストでテスト(模擬バス、サニタイザ有効) |
 | Build & Release | `.github/workflows/release.yml` | main への push | 差分のあるディレクトリだけビルドし release を切る |
 
 ## 初回セットアップ
@@ -49,9 +51,25 @@ pre-commit install       # clone / worktree ごとではなくリポジトリ単
 
 `build.sh` が無いディレクトリはビルドされない(release にも載らない)。
 
+## 依存の宣言(deps.txt)
+
+他のディレクトリのソースをビルド時に取り込むディレクトリは、`halo-<name>/deps.txt` に依存先を書く。依存先が変更されたとき、そのディレクトリも再ビルド(release)の対象になる。
+
+```text
+# halo-link を ../halo-link から取り込む
+halo-link
+```
+
+- 1 行 1 ディレクトリ名。`#` 以降と空行は無視する。
+- 依存先は `scripts/build.sh` を持たなくてよい(`halo-link` はビルド対象ではない)。
+- 直接の依存だけを見る(依存の依存は辿らない)。必要なら、依存元にも書く。
+- 疎結合の方針により、書いてよい依存先は共有ライブラリの `halo-link` だけ。デバイスのディレクトリ同士は書かない。
+- 現在あるのは `halo-controller-ch32v003/deps.txt` のみ。`halo-controller/` `halo-controller-esp32/` `halo-controller-picow/` は、そのディレクトリを作る PR で `deps.txt`(中身は `halo-link`)を足す。
+- `all` モード・初回 push は deps.txt に関係なく全ビルド対象を返す。
+
 ## release の動き
 
-1. main への push で、前回との差分があるビルド対象ディレクトリだけをビルドする。
+1. main への push で、前回との差分があるビルド対象ディレクトリ(と、差分のあるディレクトリに `deps.txt` で依存するもの)だけをビルドする。
 2. 差分が無いビルド対象ディレクトリの `halo-<name>.zip` は、直前の release からコピーして同じ release に載せる。
 3. ビルド対象の差分が1つも無い(docs のみなど)ときは release を切らない。
 4. タグは `release-<UTC日時>-<短縮sha>`。本文に「今回ビルド」と「引き継ぎ」を書く。
@@ -62,5 +80,8 @@ pre-commit install       # clone / worktree ごとではなくリポジトリ単
 
 ```bash
 scripts/changed-dirs.sh all                   # ビルド対象の全ディレクトリ
-scripts/changed-dirs.sh diff origin/main HEAD # 差分のあるビルド対象
+scripts/changed-dirs.sh diff origin/main HEAD # 差分のあるビルド対象(依存元を含む)
+scripts/test-changed-dirs.sh                  # changed-dirs.sh のテスト(一時 git リポジトリで実行)
 ```
+
+`changed-dirs.sh` を変えたら `test-changed-dirs.sh` にケースを足して実行する。

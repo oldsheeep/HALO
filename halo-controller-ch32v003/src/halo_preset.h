@@ -30,6 +30,39 @@ typedef struct {
 
 _Static_assert(sizeof(halo_preset_t) == 16, "halo_preset_t must be 16 bytes");
 
+// ---- プリセットを簡単に書くためのマクロ ----
+// すべてコンパイル時に計算される定数式。関数呼び出しや計算は実行時に残らず、
+// 計算済みの値が const データとしてフラッシュに入る。
+//
+//   色     HALO_RGB(r, g, b)         各 0..255
+//          HALO_RGBA(r, g, b, a)     a: 0..255 (255 = 100%)。色にあらかじめ掛けて暗くする
+//          HALO_HEX(0xRRGGBB)
+//          HALO_HEXA(0xRRGGBBAA)     例: HALO_HEXA(0x4444BB88)
+//   プリセット
+//          HALO_PRESET(period_ms, 色, 色, ...)               明るさ 100%。色は 1..4 個
+//          HALO_PRESET_B(brightness, period_ms, 色, ...)     全体の明るさ 0..255 を指定
+//          period_ms: 一周(360°)する時間[ms]。0 なら静止
+#define HALO_SCALE255_(v, a) ((uint8_t)((((v) & 0xFF) * ((a) & 0xFF) + 127) / 255))
+#define HALO_RGBA(r, g, b, a) {HALO_SCALE255_(r, a), HALO_SCALE255_(g, a), HALO_SCALE255_(b, a)}
+#define HALO_RGB(r, g, b) HALO_RGBA(r, g, b, 255)
+#define HALO_HEXA(v) HALO_RGBA((v) >> 24, (v) >> 16, (v) >> 8, (v))
+#define HALO_HEX(v) HALO_RGB((v) >> 16, (v) >> 8, (v))
+
+// 色の個数は引数から数える。1..HALO_PRESET_MAX_COLORS の範囲外はコンパイルエラー
+// (サイズが負の配列型になる)。
+#define HALO_COLOR_COUNT_(...)                                                                     \
+    (sizeof(char[(sizeof((halo_rgb_t[]){__VA_ARGS__}) / sizeof(halo_rgb_t)) >= 1 &&                \
+                         (sizeof((halo_rgb_t[]){__VA_ARGS__}) / sizeof(halo_rgb_t)) <=             \
+                             HALO_PRESET_MAX_COLORS                                                \
+                     ? (sizeof((halo_rgb_t[]){__VA_ARGS__}) / sizeof(halo_rgb_t))                  \
+                     : -1]))
+#define HALO_PRESET_B(brightness_, period_ms_, ...)                                                \
+    {                                                                                              \
+        .brightness = (brightness_), .color_count = HALO_COLOR_COUNT_(__VA_ARGS__),                \
+        .period_ms = (period_ms_), .colors = {__VA_ARGS__}                                         \
+    }
+#define HALO_PRESET(period_ms_, ...) HALO_PRESET_B(255, period_ms_, __VA_ARGS__)
+
 // 角度 angle_deg(0..359)の LED の色。phase_deg(0..359)は模様の回転量で、
 // 増えるにつれ模様が角度の増える向きへ動く。
 static inline halo_rgb_t halo_preset_color_at(const halo_preset_t *p, uint16_t angle_deg,

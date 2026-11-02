@@ -240,9 +240,9 @@ halo = new halo()          // 生成時に call() を 1 回行う(接続確認�
 if !halo.res.ok            // 直近の API 呼び出しが成功したか。API を呼ぶたびに更新される
   return
 [count, preset] = halo.res.status   // 保持している状態(API は呼ばない)。更新は halo.call()
-halo.set.led(args)         // カスタム点灯を設定する(表示はまだ変わらない)
-halo.run(int)              // 点灯を実行し、状態も更新する
-halo.call()                // 状態を更新する
+halo.set.led(args)         // カスタム点灯を設定する(表示はまだ変わらない)。戻り値は ok
+halo.run(int)              // 点灯を実行し、状態も更新する。戻り値は ok
+halo.call()                // 状態を更新する。戻り値は ok
 ```
 
 | 呼び出し | 通信 | 内容 |
@@ -255,10 +255,9 @@ halo.call()                // 状態を更新する
 | `halo.run(4)` | `SHOW` | **custom**: `set.led` で書いたカスタム点灯を表示する |
 | `halo.run(5〜)` | (送らない) | 予約。`BAD_ARG` 相当のエラーを返す |
 
-- `halo.res.ok`: 直近の API 呼び出しが成功したか(応答を受け、STATUS が OK)。失敗したときは `halo.res.error` に理由(タイムアウト、STATUS の値など)が入り、`halo.res.status` は**前回の値のまま**になる。
-- `halo.res.status`: `[count, preset]` を先頭の 2 要素とする。`count` = LED 個数、`preset` = 固定プリセット数。そのほか、プロトコル版・ファーム版・`mode`・`preset_id`・`brightness` も持つ。
+- `halo.res`: 直近の API 呼び出しの結果(7.0.1)。
 - `halo.run(int)`: `0` = none(消灯)、`1〜3` = 固定プリセット、`4〜` = custom。固定プリセットの数が 3 でない HALO は、`1〜preset` が固定プリセットになり、`preset + 1` 以降が custom になる。**上の表の `4` は、固定プリセットが 3 つのときの値**。
-- `run` の応答は状態を含むので、`run` の後に `halo.res.status` を読めば、A 側の状態に合っている。
+- `run` の応答は状態を含むので、成功した `run` の後に `halo.res.status` を読めば、A 側の状態に合っている。
 - `halo.set.led(args)` の `args`(案):
   - `set.led(index, color)`: 1 個
   - `set.led(colors[], n)`: 先頭から `n` 個
@@ -266,11 +265,53 @@ halo.call()                // 状態を更新する
   - `set.fill(color)`: 全部同じ色
 - カスタム点灯を更新するときは、`set.led` で書き、`run(4)` で一度に反映する(途中の状態は見えない)。直接制御中でも同じ。LED が 15 個なら、書き込み 5 回 + 反映 1 回で 20 ms 前後。
 
+#### 7.0.1 `halo.res`
+
+```text
+halo.res
+├── ok      : bool    直近の API 呼び出しが成功したか
+├── error   : 失敗の理由(ok のときは kind = NONE)
+│   ├── kind          NONE / TIMEOUT / DEVICE_STATUS / BAD_ARG / NOT_READY / VERSION
+│   ├── device_status A が返した STATUS の値(kind = DEVICE_STATUS のとき)
+│   └── index         失敗した位置(set.led で、最初に失敗した LED の番号)
+└── status  : A の状態のキャッシュ(API は呼ばない)
+    ├── led_count, preset_count         … [count, preset] の 2 つ
+    ├── proto_ver, fw_version[3]
+    ├── mode, preset_id, brightness
+    ├── valid   : bool    1 度でも HELLO / GET_STATE に成功したか
+    ├── fresh   : bool    最新の状態か(下記)
+    └── age_ms  : u32     状態を最後に更新してからの経過時間
+```
+
+規則:
+
+- **`ok` と `error` は、API を 1 回呼ぶたびに上書きする**(`new` / `call` / `set.*` / `run`)。前の呼び出しの結果は残らないので、各呼び出しの直後に確認する。
+- **各 API は `ok`(bool)を返す**。`if !halo.run(1) return` のように使えるし、`halo.res` をあとでまとめて見てもよい。
+- **`status` が更新されるのは、状態を載せた応答に成功したとき**だけ(`HELLO` / `GET_STATE` / `APPLY_PRESET` / `SHOW`)。`set.led` は更新しない。
+- **失敗しても `status` の値は消さない**。代わりに `fresh = false` にする。`fresh` が `true` に戻るのは、次に `call()` か `run()` が成功したとき。
+  - `led_count` や `preset_count` など、HALO ごとに固定の値は、`fresh` が `false` でも使える(`valid` が `true` なら)。
+  - `mode` や `preset_id` など、変わる値は、`fresh` が `true` のときだけ信用する。
+- `valid = false`(`new halo()` の最初の接続が失敗した直後など)のとき、`count` と `preset` は `0` になる。この状態で `call()` 以外の API を呼ぶと、通信せずに `kind = NOT_READY` で失敗する。
+- `error.kind`:
+
+| kind | 意味 |
+| --- | --- |
+| `NONE` | 成功 |
+| `TIMEOUT` | 再送(最大 3 回)しても、有効な応答が来なかった |
+| `DEVICE_STATUS` | A が `OK` 以外の STATUS を返した(値は `device_status`) |
+| `BAD_ARG` | 引数が範囲外。**通信せずに**失敗する(例: `run(5)`、`run(1〜)` が固定プリセット数を超える、LED の番号が範囲外) |
+| `NOT_READY` | 接続できていない(`valid = false`) |
+| `VERSION` | A のプロトコル版が、このライブラリの対応する版より新しい |
+
+- **複数回の通信になる API(`set.led`)は、最初の失敗で中断する**。`ok = false`、`error.index` に失敗した位置(その通信の先頭の LED 番号)を入れ、残りは送らない。A のステージングは途中まで書き換わっているが、`run(4)` を呼ぶまで表示は変わらないので、画面は乱れない。復旧は、`set.led` を最初からやり直してから `run(4)` を呼ぶ。
+- 再送の回数や往復時間などの診断情報は、v1 では持たない。
+- `halo` オブジェクトは単一のスレッド(または単一のメインループ)から使う。割り込みハンドラや複数のタスクから同時に呼ばない。
+
 C での形(C99。CH32V003 を含む全 B 側で使う):
 
 ```c
 halo_t halo;
-halo_new(&halo, &port);                       // = new halo()
+halo_new(&halo, &port);                       // = new halo()(戻り値は ok)
 if (!halo.res.ok) return;
 uint16_t count  = halo.res.status.led_count;  // [count, preset]
 uint8_t  preset = halo.res.status.preset_count;

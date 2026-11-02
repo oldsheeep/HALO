@@ -17,8 +17,8 @@ void sk6812_init(void) {
     RCC->APB2PCENR |= (RCC_APB2Periph_GPIOA << port_id);
 
     int off = SK6812_PIN * 4;
-    SK6812_PORT->CFGLR = (SK6812_PORT->CFGLR & ~(0xf << off)) |
-                         ((GPIO_Speed_50MHz | GPIO_CNF_OUT_PP) << off);
+    SK6812_PORT->CFGLR =
+        (SK6812_PORT->CFGLR & ~(0xf << off)) | ((GPIO_Speed_50MHz | GPIO_CNF_OUT_PP) << off);
     SK6812_PORT->BSHR = 1 << (16 + SK6812_PIN);
 }
 

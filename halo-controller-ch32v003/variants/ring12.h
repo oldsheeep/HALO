@@ -11,10 +11,7 @@ static const halo_preset_t halo_fixed_presets[] = {
      .period_ms = 6000,
      .colors = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}}},
     // 1: 暖色の静止グラデーション
-    {.brightness = 64,
-     .color_count = 2,
-     .period_ms = 0,
-     .colors = {{255, 80, 0}, {255, 0, 40}}},
+    {.brightness = 64, .color_count = 2, .period_ms = 0, .colors = {{255, 80, 0}, {255, 0, 40}}},
     // 2: 白と青のゆっくり回転
     {.brightness = 48,
      .color_count = 2,

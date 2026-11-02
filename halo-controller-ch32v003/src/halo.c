@@ -28,7 +28,8 @@ int main(void) {
 
     uint32_t t_ms = 0;
     for (;;) {
-        const halo_preset_t *p = &halo_fixed_presets[(t_ms / PRESET_SHOW_MS) % HALO_FIXED_PRESET_COUNT];
+        const halo_preset_t *p =
+            &halo_fixed_presets[(t_ms / PRESET_SHOW_MS) % HALO_FIXED_PRESET_COUNT];
         render(p, t_ms);
         sk6812_send(frame, HALO_LED_COUNT);
         Delay_Ms(FRAME_MS);

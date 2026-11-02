@@ -9,11 +9,13 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# set -e / pipefail 下で、該当なしでも終了コード 0 にするため、&& ではなく if を使う
 all_dirs() {
     local d
+    shopt -s nullglob
     for d in halo-*/; do
         d=${d%/}
-        [[ -f "$d/scripts/build.sh" ]] && echo "$d"
+        if [[ -f "$d/scripts/build.sh" ]]; then echo "$d"; fi
     done
 }
 
@@ -42,7 +44,7 @@ diff)
     fi
     changed=$(git diff --name-only "$base" "$head" | cut -d/ -f1 | sort -u)
     all_dirs | while read -r d; do
-        grep -qx "$d" <<<"$changed" && echo "$d"
+        if grep -qx "$d" <<<"$changed"; then echo "$d"; fi
     done | to_json
     ;;
 *)

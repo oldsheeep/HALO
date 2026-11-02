@@ -1,0 +1,19 @@
+name: Test scripts
+
+# scripts/ 配下のスクリプトのテスト。scripts/ や deps.txt に関わる PR のみ。
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "halo-*/deps.txt"
+      - ".github/workflows/test-scripts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  changed-dirs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/test-changed-dirs.sh

@@ -56,6 +56,7 @@ CH32V003 で SK6812mini-e(アドレサブルLED)を制御するプログラム�
 - 通常の開発は `develop` ブランチ(およびそこから切った作業ブランチ)で行う。
 - `main` へのマージで GitHub Actions が走り、**変更のあったディレクトリ(機能)のみ**ビルドして書き込み用の成果物を作る。
   - 対象は `halo-*/scripts/build.sh` を持つディレクトリ。差分のあるものだけビルドして release を切り、差分の無いものは前回 release の成果物を引き継ぐ。
+  - `halo-link` など他ディレクトリを取り込むときは `halo-<name>/deps.txt` に依存先を書く。依存先が変わると、そのディレクトリも再ビルドされる(`ci` skill)。
 - `develop` への push で `develop` → `main` の PR が自動作成される。
 - 緊急時は `hotfix/*` を main から切り、main へ直接 PR する(自動作成)。マージ後は main → develop の同期 PR が自動作成される(`hotfix` skill)。
 - コミット時は pre-commit が差分に linter / formatter を auto fix し、PR では CI が検査する。詳細は `ci` skill。

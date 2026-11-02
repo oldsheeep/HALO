@@ -15,8 +15,8 @@ CH32V003 で SK6812mini-e(アドレサブルLED)を制御するプログラム�
 | `halo-link/` | 単線半二重通信のライブラリ(A・B 側で共有。仕様は [docs/halo-link-spec.md](docs/halo-link-spec.md)) |
 | `halo-bridge/` | I2C ブリッジのライブラリ(ESP32 / Pico W ⇔ B 側の CH32V003。仕様は [docs/halo-bridge-spec.md](docs/halo-bridge-spec.md)) |
 | `halo-controller/` | B 側(マスター)の CH32V003 版。A 側へプリセット実行・LED 直接制御・情報要求を送る |
-| `halo-controller-esp32/` | B 側(マスター)の ESP32 版 |
-| `halo-controller-picow/` | B 側(マスター)の Pico W 版 |
+| `halo-controller-esp32/` | ESP32 側。B 側へ I2C でつなぎ、A 側を操作する(ビルド・実機は未確認) |
+| `halo-controller-picow/` | Pico W 側。B 側へ I2C でつなぎ、A 側を操作する(ビルド・実機は未確認) |
 | `halo-pcb-ch32v003/` | CH32V003J4M6 のコントローラ基板の回路図(KiCad) |
 
 今後追加予定(追加時はこの表を更新する):

@@ -17,6 +17,7 @@ description: HALO の CI/CD(GitHub Actions と pre-commit)の仕組みと、デ�
 | Test scripts | `.github/workflows/test-scripts.yml` | `scripts/` `halo-*/deps.txt` を変える PR | `scripts/test-changed-dirs.sh` を実行 |
 | Test halo-link | `.github/workflows/test-halo-link.yml` | `halo-link/**` の PR・push | ホストでテスト(模擬バス、サニタイザ有効) |
 | Test halo-bridge | `.github/workflows/test-halo-bridge.yml` | `halo-bridge/**` `halo-link/**` の PR・push | ホストでテスト(模擬の I2C と単線、サニタイザ有効) |
+| Check halo-controller-esp32 / picow | `.github/workflows/check-halo-esp-pico.yml` | 両ディレクトリと `halo-link` `halo-bridge` の PR・push | ESP-IDF / Pico SDK が無い環境での、構文の検査(ビルドの代わりにはならない) |
 | Build & Release | `.github/workflows/release.yml` | main への push | 差分のあるディレクトリだけビルドし release を切る |
 
 ## 初回セットアップ

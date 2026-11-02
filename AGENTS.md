@@ -16,6 +16,7 @@ CH32V003 で SK6812mini-e(アドレサブルLED)を制御するプログラム�
 | `halo-controller/` | B 側(マスター)の CH32V003 版。A 側へプリセット実行・LED 直接制御・情報要求を送る |
 | `halo-controller-esp32/` | B 側(マスター)の ESP32 版 |
 | `halo-controller-picow/` | B 側(マスター)の Pico W 版 |
+| `halo-pcb-ch32v003/` | CH32V003J4M6 のコントローラ基板の回路図(KiCad) |
 
 今後追加予定(追加時はこの表を更新する):
 

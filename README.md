@@ -23,7 +23,10 @@ monorepo。デバイス・役割ごとにトップレベルのディレクトリ
 | ディレクトリ | 役割 |
 | --- | --- |
 | [halo-controller-ch32v003/](halo-controller-ch32v003/) | CH32V003 で SK6812mini-e を制御するファームウェア |
-| `halo-controller/` | ESP32 / Pico W 側のコントローラ(BLE 経由のプリセット書き込み・呼び出し) |
+| `halo-link/` | 単線半二重通信のライブラリ(A・B 側で共有。仕様は [docs/halo-link-spec.md](docs/halo-link-spec.md)) |
+| `halo-controller/` | B 側(マスター)の CH32V003 版。A 側へプリセット実行・LED 直接制御・情報要求を送る |
+| `halo-controller-esp32/` | B 側(マスター)の ESP32 版 |
+| `halo-controller-picow/` | B 側(マスター)の Pico W 版 |
 | [docs/](docs/) | 設計メモ・仕様書(デバイス間プロトコルなど) |
 | `.github/` | GitHub Actions、PR テンプレート、CODEOWNERS |
 | `.claude/skills/` | 反復作業の手順(エージェント向け skill) |

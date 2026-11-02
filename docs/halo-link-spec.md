@@ -110,14 +110,15 @@ flowchart LR
 | `0x02` | HELLO | なし | 5.1 | プロトコル版・ファーム版・LED 個数など(情報要求) |
 | `0x03` | GET_ANGLES | `start`(u8)、`count`(u8、1〜4) | `start`、`count`、偏角(u16)× `count` | LED の偏角を読む(接続順) |
 | `0x04` | GET_STATE | なし | `mode`(u8)、`preset_id`(u8)、`brightness`(u8) | 現在の状態 |
-| `0x10` | APPLY_PRESET | `id`(u8) | なし | 固定プリセットを再生する(プリセット実行) |
+| `0x10` | APPLY_PRESET | `id`(u8) | 状態(5.2) | 固定プリセットの再生・消灯・AUTO への復帰(プリセット実行) |
 | `0x11` | SET_BRIGHTNESS | `value`(u8) | なし | 全体の明るさ(0〜255)。RAM のみで、保存しない |
 | `0x20` | SET_LEDS | `start`(u8)、RGB × 3 | なし | LED を直接指定する(ステージングに書く) |
 | `0x21` | FILL | `r`、`g`、`b` | なし | 全 LED を同じ色にする(ステージングに書く) |
-| `0x22` | SHOW | なし | なし | ステージングを表示に反映し、直接制御モードにする |
+| `0x22` | SHOW | なし | 状態(5.2) | ステージングを表示に反映し、直接制御モードにする |
 | `0x40`〜`0x4F` | (予約) | | | プリセットの書き込み・削除など、将来用。v1 では `UNSUPPORTED` を返す |
 
-- `APPLY_PRESET` の `id` は、`0`〜(固定プリセット数 - 1)。`0xFF` は AUTO(現在のデモ動作:固定プリセットを順に表示)に戻す。
+- `APPLY_PRESET` の `id` は、`0`〜(固定プリセット数 - 1)が固定プリセット、`0xFE` は**消灯**(OFF)、`0xFF` は AUTO(現在のデモ動作:固定プリセットを順に表示)に戻す。
+- `APPLY_PRESET` と `SHOW` の応答は、実行後の**状態**(5.2)を PAYLOAD に載せる。マスターは、これで状態のキャッシュを更新し、`GET_STATE` を別に送らずに済む。
 - `SET_LEDS` は LED を 3 個ずつ書く。`start` から 3 個分の RGB を、接続順の番号 `start`, `start+1`, `start+2` に置く。LED 個数を超える番号は無視する(15 個なら 5 回で全部を書ける)。
 - `SET_LEDS` と `FILL` はステージングを更新するだけで、表示は変わらない。`SHOW` で全 LED が一度に切り替わる。
 - 表示色は、全体の明るさ(`SET_BRIGHTNESS`)を掛けた値になる。
@@ -166,7 +167,7 @@ flowchart LR
 
 | byte | 内容 |
 | --- | --- |
-| 0 | `mode`: `0` = AUTO(デモ動作)、`1` = PRESET、`2` = DIRECT(直接制御) |
+| 0 | `mode`: `0` = AUTO(デモ動作)、`1` = PRESET、`2` = DIRECT(直接制御)、`3` = OFF(消灯) |
 | 1 | `preset_id`: PRESET のときの ID |
 | 2 | `brightness`: 全体の明るさ |
 
@@ -189,20 +190,25 @@ CRC が合わない要求には、**応答しない**(LEN などを信用でき�
 sequenceDiagram
     participant B as B(マスター)
     participant A as A(スレーブ)
+    Note over B: new halo() / halo.call()
     B->>A: HELLO (SEQ=1)
     A-->>B: HELLO 応答 (LED 個数 15, 固定プリセット 3)
-    B->>A: APPLY_PRESET id=1 (SEQ=2)
+    B->>A: GET_STATE (SEQ=2)
+    A-->>B: 状態 (mode, preset_id, brightness)
+    Note over B: halo.run(2) = 固定プリセット id=1
+    B->>A: APPLY_PRESET id=1 (SEQ=3)
+    A-->>B: OK + 状態
+    Note over B,A: halo.set.led(...) = 15 個を 5 回に分けて書く
+    B->>A: SET_LEDS start=0 (SEQ=4)
     A-->>B: OK
-    Note over B,A: 直接制御: 15 個を 5 回に分けて書く
-    B->>A: SET_LEDS start=0 (SEQ=3)
-    A-->>B: OK
-    B->>A: SET_LEDS start=3 〜 start=12 (SEQ=4..7)
+    B->>A: SET_LEDS start=3 〜 start=12 (SEQ=5..8)
     A-->>B: OK × 4
-    B->>A: SHOW (SEQ=8)
-    A-->>B: OK
+    Note over B: halo.run(4) = カスタムを表示
+    B->>A: SHOW (SEQ=9)
+    A-->>B: OK + 状態
     Note over B,A: 応答が無い場合
-    B->>A: GET_STATE (SEQ=9)
-    Note over B: 20 ms 待つ → 同じ SEQ=9 で再送(最大 3 回)
+    B->>A: GET_STATE (SEQ=10)
+    Note over B: 20 ms 待つ → 同じ SEQ=10 で再送(最大 3 回)
 ```
 
 ## 7. ライブラリ `halo-link`
@@ -225,7 +231,57 @@ halo-link/
 └── README.md
 ```
 
-API の案:
+### 7.0 マスター側の使い方(`halo` オブジェクト)
+
+B 側のアプリは、フレームやコマンドを意識せず、`halo` オブジェクトを通して A を操作する。
+
+```text
+halo = new halo()          // 生成時に call() を 1 回行う(接続確認と状態の取得)
+if !halo.res.ok            // 直近の API 呼び出しが成功したか。API を呼ぶたびに更新される
+  return
+[count, preset] = halo.res.status   // 保持している状態(API は呼ばない)。更新は halo.call()
+halo.set.led(args)         // カスタム点灯を設定する(表示はまだ変わらない)
+halo.run(int)              // 点灯を実行し、状態も更新する
+halo.call()                // 状態を更新する
+```
+
+| 呼び出し | 通信 | 内容 |
+| --- | --- | --- |
+| `new halo()` | `HELLO` + `GET_STATE` | 接続確認。LED 個数・固定プリセット数・版・現在の状態を取得 |
+| `halo.call()` | `HELLO` + `GET_STATE` | 状態の更新。`res.status` を作り直す |
+| `halo.set.led(args)` | `SET_LEDS` / `FILL` を必要な回数 | カスタム点灯を A のステージングに書く。3 個ずつの分割はライブラリが行う |
+| `halo.run(0)` | `APPLY_PRESET` `0xFE` | **none**: 消灯 |
+| `halo.run(1〜3)` | `APPLY_PRESET` `n - 1` | 固定プリセット(1 始まり。上限は `count` ではなく固定プリセット数) |
+| `halo.run(4)` | `SHOW` | **custom**: `set.led` で書いたカスタム点灯を表示する |
+| `halo.run(5〜)` | (送らない) | 予約。`BAD_ARG` 相当のエラーを返す |
+
+- `halo.res.ok`: 直近の API 呼び出しが成功したか(応答を受け、STATUS が OK)。失敗したときは `halo.res.error` に理由(タイムアウト、STATUS の値など)が入り、`halo.res.status` は**前回の値のまま**になる。
+- `halo.res.status`: `[count, preset]` を先頭の 2 要素とする。`count` = LED 個数、`preset` = 固定プリセット数。そのほか、プロトコル版・ファーム版・`mode`・`preset_id`・`brightness` も持つ。
+- `halo.run(int)`: `0` = none(消灯)、`1〜3` = 固定プリセット、`4〜` = custom。固定プリセットの数が 3 でない HALO は、`1〜preset` が固定プリセットになり、`preset + 1` 以降が custom になる。**上の表の `4` は、固定プリセットが 3 つのときの値**。
+- `run` の応答は状態を含むので、`run` の後に `halo.res.status` を読めば、A 側の状態に合っている。
+- `halo.set.led(args)` の `args`(案):
+  - `set.led(index, color)`: 1 個
+  - `set.led(colors[], n)`: 先頭から `n` 個
+  - `set.led(start, colors[], n)`: `start` から `n` 個
+  - `set.fill(color)`: 全部同じ色
+- カスタム点灯を更新するときは、`set.led` で書き、`run(4)` で一度に反映する(途中の状態は見えない)。直接制御中でも同じ。LED が 15 個なら、書き込み 5 回 + 反映 1 回で 20 ms 前後。
+
+C での形(C99。CH32V003 を含む全 B 側で使う):
+
+```c
+halo_t halo;
+halo_new(&halo, &port);                       // = new halo()
+if (!halo.res.ok) return;
+uint16_t count  = halo.res.status.led_count;  // [count, preset]
+uint8_t  preset = halo.res.status.preset_count;
+halo_set_led(&halo, 0, colors, 15);           // = halo.set.led(...)
+halo_run(&halo, 4);                           // = halo.run(4)
+halo_call(&halo);                             // = halo.call()
+```
+
+ESP32 / Pico W(C++)向けには、`halo.set.led(...)` / `halo.run(...)` と同じ書き方のできる薄い C++ ラッパー(`halo_link.hpp`)を、必要なら足す。
+
+### 7.2 ポートとスレーブの API(案)
 
 ```c
 // ポート: 実装は MCU ごとの B 側ディレクトリ・A 側に置く
@@ -236,22 +292,17 @@ typedef struct {
     void      *ctx;
 } halo_link_port_t;
 
-// マスター(B)
-halo_link_status_t halo_link_hello(halo_link_master_t *m, halo_link_hello_t *out);
-halo_link_status_t halo_link_apply_preset(halo_link_master_t *m, uint8_t id);
-halo_link_status_t halo_link_set_leds(halo_link_master_t *m, uint8_t start, const halo_rgb3_t *rgb);
-halo_link_status_t halo_link_show(halo_link_master_t *m);
-
 // スレーブ(A): 受信したコマンドごとにハンドラを呼ぶ
 typedef struct {
     halo_link_status_t (*apply_preset)(void *ctx, uint8_t id);
     halo_link_status_t (*set_leds)(void *ctx, uint8_t start, const halo_rgb3_t *rgb);
+    halo_link_status_t (*show)(void *ctx);
     /* ... */
 } halo_link_slave_ops_t;
 void halo_link_slave_poll(halo_link_slave_t *s);
 ```
 
-### 7.1 依存の扱い(CI への影響)
+### 7.3 依存の扱い(CI への影響)
 
 `halo-link` を使う各ディレクトリは、ビルド時に `../halo-link` のソースを取り込む(同じリポジトリ内の相対パス)。**`halo-link` が変更されたら、それを使うディレクトリも再ビルドする**必要がある。
 
@@ -283,7 +334,7 @@ void halo_link_slave_poll(halo_link_slave_t *s);
 | 3 | `halo-controller` | B 側(CH32V003)。A に HELLO → プリセット実行 → 直接制御を送るテスト用ツール。**ここで実機の疎通を確認する** | `controller` |
 | 4 | `halo-controller-esp32` | B 側(ESP32)。ポートの実装 | `controller-esp32` |
 | 5 | `halo-controller-picow` | B 側(Pico W)。ポートの実装 | `controller-picow` |
-| 6 | リポジトリ共通 | CI の依存解決(7.1)、`AGENTS.md` と README の更新 | `repo` |
+| 6 | リポジトリ共通 | CI の依存解決(7.3)、`AGENTS.md` と README の更新 | `repo` |
 
 1 と 6 は、2 以降の前提になる。2 と 3 は並行して進められるが、疎通の確認は両方が揃ってから行う。
 
@@ -298,3 +349,4 @@ void halo_link_slave_poll(halo_link_slave_t *s);
 | U5 | 回路の実機確認 | ダイオード方式の L レベル・立ち上がり(プルアップ 4.7 kΩ で 115200 bps が出るか) |
 | U6 | CH32V003 の USART の `HDSEL` で、ダイオード無しの 1 ピン構成にするか | 実機確認の後に判断 |
 | U7 | プリセットの書き込み(予約コマンド `0x40`〜) | v1 の対象外。必要になったら設計メモ(`preset-write-methods.md`)を土台に別途仕様化する |
+| U8 | `halo.run(0)` の none を「消灯」とし、`run(4〜)` の custom を「`set.led` で書いた表示(4 のみ)」とした解釈 | 5 以降を、B 側が持つ複数のカスタムに割り当てるなら、ライブラリ側で `set.led` の保存先を分ける(A の通信は変えない) |

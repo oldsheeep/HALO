@@ -39,7 +39,9 @@ CH32V003 で SK6812mini-e(アドレサブルLED)を制御するプログラム�
 
 - 通常の開発は `develop` ブランチ(およびそこから切った作業ブランチ)で行う。
 - `main` へのマージで GitHub Actions が走り、**変更のあったディレクトリ(機能)のみ**ビルドして書き込み用の成果物を作る。
-  - そのため、ワークフローはパスフィルタ(`paths:`)でディレクトリごとに分けること。
+  - 対象は `halo-*/scripts/build.sh` を持つディレクトリ。差分のあるものだけビルドして release を切り、差分の無いものは前回 release の成果物を引き継ぐ。
+- `develop` への push で `develop` → `main` の PR が自動作成される。
+- コミット時は pre-commit が差分に linter / formatter を auto fix し、PR では CI が検査する。詳細は `ci` skill。
 - 作業は git worktree 上で行う(メインのチェックアウトでは作業しない)。
 - PR には、対象の機能を示す label(`scope:<scope>`)を付ける(手順は `pr` skill)。
 - ブランチ命名規則・worktree の詳細ルールは [CLAUDE.md](CLAUDE.md) に定義する。

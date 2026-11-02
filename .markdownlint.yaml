@@ -1,0 +1,5 @@
+# 日本語の長文・見出し直後のコード等を許容する
+default: true
+MD013: false # 行長
+MD033: false # インライン HTML
+MD041: false # 先頭行は見出しでなくてよい

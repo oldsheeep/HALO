@@ -1,0 +1,128 @@
+name: Build & Release
+
+# main への push(= PR マージ)で、差分のあるディレクトリだけビルドして release を切る。
+# 差分の無いディレクトリの成果物は、直前の release からコピーして同じ release に載せる。
+# ビルド対象の規約は scripts/changed-dirs.sh と .claude/skills/ci/SKILL.md を参照。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      all:
+        description: "全ディレクトリをビルドする"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.dirs.outputs.changed }}
+      all: ${{ steps.dirs.outputs.all }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: dirs
+        env:
+          BEFORE: ${{ github.event.before }}
+          FORCE_ALL: ${{ inputs.all }}
+        run: |
+          all=$(scripts/changed-dirs.sh all)
+          if [[ "$FORCE_ALL" == "true" ]]; then
+            changed=$all
+          else
+            changed=$(scripts/changed-dirs.sh diff "$BEFORE" "$GITHUB_SHA")
+          fi
+          echo "all=$all" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "all: $all / changed: $changed"
+
+  build:
+    needs: detect
+    if: needs.detect.outputs.changed != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.detect.outputs.changed) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup toolchain (optional)
+        env:
+          DIR: ${{ matrix.dir }}
+        run: |
+          if [[ -f "$DIR/scripts/setup-ci.sh" ]]; then
+            bash "$DIR/scripts/setup-ci.sh"
+          fi
+
+      - name: Build
+        env:
+          DIR: ${{ matrix.dir }}
+        run: |
+          bash "$DIR/scripts/build.sh"
+          if [[ -z "$(ls -A "$DIR/dist" 2>/dev/null)" ]]; then
+            echo "::error::$DIR/dist に成果物がありません"
+            exit 1
+          fi
+          (cd "$DIR/dist" && zip -r "$GITHUB_WORKSPACE/$DIR.zip" .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.dir }}
+          path: ${{ matrix.dir }}.zip
+          if-no-files-found: error
+
+  release:
+    needs: [detect, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: build-*
+
+      - name: Collect assets (new builds + carry over from previous release)
+        env:
+          ALL: ${{ needs.detect.outputs.all }}
+        run: |
+          set -euo pipefail
+          mkdir out
+          cp artifacts/*/*.zip out/
+
+          prev=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')
+          : > carried.txt
+          for d in $(jq -r '.[]' <<<"$ALL"); do
+            [[ -f "out/$d.zip" ]] && continue
+            if [[ -n "$prev" ]] && gh release download "$prev" -p "$d.zip" -D out 2>/dev/null; then
+              echo "- $d (from $prev)" >> carried.txt
+            else
+              echo "::warning::$d の以前の成果物が見つからないので載せません"
+            fi
+          done
+          echo "prev=$prev" >> "$GITHUB_ENV"
+
+      - name: Create release
+        run: |
+          set -euo pipefail
+          tag="release-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+          {
+            echo "## 今回ビルドしたディレクトリ"
+            for f in artifacts/*/*.zip; do echo "- $(basename "$f" .zip)"; done
+            echo
+            echo "## 前回 release から引き継いだ成果物"
+            if [[ -s carried.txt ]]; then cat carried.txt; else echo "- なし"; fi
+          } > notes.md
+          gh release create "$tag" out/* \
+            --target "$GITHUB_SHA" --title "$tag" --notes-file notes.md

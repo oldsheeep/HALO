@@ -14,6 +14,7 @@ description: HALO の CI/CD(GitHub Actions と pre-commit)の仕組みと、デ�
 | Auto PR to main | `.github/workflows/auto-pr-to-main.yml` | develop への push | develop → main の PR を作成・更新し、`scope:<scope>` label を付ける |
 | Auto PR for hotfix | `.github/workflows/auto-pr-hotfix.yml` | `hotfix/**` への push | main 向けの PR を作成・更新し、`hotfix` と `scope:<scope>` label を付ける |
 | Sync main to develop | `.github/workflows/sync-main-to-develop.yml` | main への push | develop に無い main のコミット(hotfix)があれば、main → develop の PR を作る |
+| Test halo-link | `.github/workflows/test-halo-link.yml` | `halo-link/**` の PR・push | ホストでテスト(模擬バス、サニタイザ有効) |
 | Build & Release | `.github/workflows/release.yml` | main への push | 差分のあるディレクトリだけビルドし release を切る |
 
 ## 初回セットアップ

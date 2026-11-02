@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // HALO CH32V003 ファームウェア: 点灯デモ。
 // 固定プリセット 3 パターンを順に表示する(各 8 秒)。
 #include "ch32fun.h"

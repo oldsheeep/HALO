@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // SK6812mini-e 1 線式ドライバ(CH32V003 / 48MHz / GPIO ビットバング)
 #ifndef SK6812_H
 #define SK6812_H

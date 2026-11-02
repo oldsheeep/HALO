@@ -1,89 +1,84 @@
 # halo-pcb-ch32v003
 
-HALO のコントローラ基板(CH32V003J4M6)の回路図。KiCad 用。
+HALO のコントローラ基板(CH32V003J4M6)の回路図。KiCad 10 で作成。
 
-- 回路図: [halo_pcb_ch32v003.kicad_sch](halo_pcb_ch32v003.kicad_sch)(KiCad 7 形式。KiCad 7 以降で開ける)
+- 回路図: [halo_pcb_ch32v003.kicad_sch](halo_pcb_ch32v003.kicad_sch)
 - プロジェクト: [halo_pcb_ch32v003.kicad_pro](halo_pcb_ch32v003.kicad_pro)
 - 通信の仕様: [docs/halo-link-spec.md](../docs/halo-link-spec.md)(3 節)
-- ファームウェア: [halo-controller-ch32v003](../halo-controller-ch32v003/)(A 側)、[halo-controller](../halo-controller/)(B 側)
+- ファームウェア: [halo-controller-ch32v003](../halo-controller-ch32v003/)(右の基板)、[halo-controller](../halo-controller/)(左の基板)
 
-**状態: 草案。KiCad では開いて確認していない**(この回路図は、構文の検査と、ファイルから再構築したネットリストの照合までしかしていない)。
-ERC・フットプリント割り当て・基板(PCB)は未着手。**部品を発注する前に、KiCad で開いて ERC を通し、下の「要確認」を確認すること。**
+**状態: 回路図は ERC をエラー 0・警告 0 で通した**(`kicad-cli sch erc`、KiCad 10.0.8)。
+フットプリントは一部が未割り当てで、基板(PCB)は未着手。実機での動作は未確認。
+
+## 図の見方
+
+1 枚のシートに、**同じ設計の基板 2 枚**(左と右)が、3.5mm ケーブルでつながった形で描かれている。中央の縦線が基板の境界。
+
+| | 左の基板 | 右の基板 |
+| --- | --- | --- |
+| 役割 | B 側(マスター)。USB-C で給電する | A 側(スレーブ)。LED をつなぐ |
+| MCU | U1 | U2 |
+| レギュレータ | U3 | U4 |
+| ジャック | J2(3.5mm ジャック) | J1(3.5mm プラグ) |
+| 書き込みヘッダ | J4 | J5 |
+| 3.3V のネット | `3V3_L` | `3V3_R` |
+| PD6 の保護 | R5・D1 | R6・D2 |
+| 5V の入力 | J3(USB-C) | ジャックの Ring から(左の基板の 5V) |
+
+ネット `+5V` と `GND` は 2 枚で共通、`LINK`(通信線)は 2 枚の PD6 をつなぐ 1 本の線。
 
 ## 構成
 
 ```text
-USB-C ──[CC1/CC2 に 5.1kΩ]── +5V ─┬─ C1 100µF / C2 0.1µF
-                                  ├─ XC6206P332MR ── +3V3 ── CH32V003J4M6 (U2)
-                                  ├─ LED コネクタ J3 (5V / DIN / GND)
-                                  └─ JP1 ── Ring ─┐
-                                                  │   3.5mm ジャック J2
- PD6 (U2) ─┬─ R3 10kΩ ── +3V3                     │   Tip = 通信、Ring = +5V、Sleeve = GND
-           ├─ D1 BAT54WS ── +3V3(クランプ)        │
-           └─ R4 1kΩ ───────────────────────── Tip
- PC4 (U2) ───────────────────────────── J3 DIN(直結)
- PD1/SWIO (U2) ──────────────────────── J4(書き込み)
+ 左の基板(USB 給電)                                右の基板(LED)
+ USB-C ─ +5V ─┬─ C1 1µF ─ U3(XC6206) ─ 3V3_L     +5V(Ring から)─ C5 1µF ─ U4 ─ 3V3_R
+              ├─ C4 100µF                            ├─ J6(LED: +5V / DIN / GND)+ C8 100µF
+              └─ Ring ──────────── 3.5mm ──────────── Ring
+ U1.PD6 ─ R5 1kΩ ─ LINK(R1 10kΩ → 3V3_L)───────────── LINK(R2 10kΩ → 3V3_R)─ R6 1kΩ ─ U2.PD6
+          D1 BAT54WS(PD6 → 3V3_L のクランプ)                  D2 BAT54WS(PD6 → 3V3_R のクランプ)
+ U1.PD1/SWIO ─ J4                                     U2.PC4 ─ DIN ─ J6        U2.PD1/SWIO ─ J5
 ```
 
-- **電源**: USB-C の VBUS(CC1・CC2 に 5.1kΩ を直接つないだ、USB の既定の 5V)を +5V とし、3 端子レギュレータ XC6206P332MR で +3V3 を作る。
-- **MCU**: CH32V003J4M6(SOP8)。pin 3・5・6(PA2・PC1・PC2)は未使用で、NC。
+- **電源**: USB-C の VBUS(CC1・CC2 に 5.1kΩ を直接)が +5V。XC6206P332MR で 3.3V を作る(入力・出力に 1µF、MCU の VDD に 0.1µF)。
+- **通信**: PD6 の 1 ピン・オープンドレイン。R1・R2(10kΩ)が H を作る。R5・R6(1kΩ)と D1・D2(BAT54WS、PD6 → 3.3V のクランプ)が、抜き差しの一瞬に Ring の 5V が PD6 に入るのを守る。
+- **ジャック**: Tip = 通信(`LINK`)、Ring = +5V、Sleeve = GND。
 - **LED**: SK6812mini-e の DIN は PC4(pin 7)から**直結**(3.3V のまま。実機で動作を確認済みとのこと)。LED の電源は +5V。
-- **通信**: PD6 の 1 ピン・オープンドレイン。R3 が H を作り、R4 とクランプ D1 が抜き差し・静電気から守る。
-- **ジャック**: 3.5mm TRS。Tip = 通信、Ring = +5V(JP1 で接続)、Sleeve = GND。
+- **書き込み**: J4・J5 の 2 ピン(SWIO と GND)。WCH-LinkE を接続する。
 
-## 部品表(案)
+## 部品表
 
-| 参照 | 値 | フットプリント(案) | 備考 |
+| 参照 | 値 | 型 | フットプリント |
 | --- | --- | --- | --- |
-| J1 | USB-C(電源のみ) | 未割り当て | VBUS・CC1・CC2・GND。実部品のピンに合わせて、シンボルを差し替える |
-| R1, R2 | 5.1kΩ | R_0603 | CC1・CC2 を GND へ |
-| C1 | 100µF | CP_Elec_6.3x5.4 | +5V のバルク(LED の電流用) |
-| C2 | 0.1µF | C_0603 | +5V のバイパス |
-| C3 | 1µF | C_0603 | XC6206 の入力 |
-| U1 | XC6206P332MR | SOT-23 | 3.3V、最大 200mA。ピンは 1 = VSS、2 = VOUT、3 = VIN(**要確認**) |
-| C4 | 1µF | C_0603 | XC6206 の出力 |
-| U2 | CH32V003J4M6 | SOIC-8_3.9x4.9mm_P1.27mm | |
-| C5 | 0.1µF | C_0603 | U2 の VDD |
-| R3 | 10kΩ | R_0603 | 通信のプルアップ(各ボードに 1 個) |
-| D1 | BAT54WS | D_SOD-323 | クランプ(アノード = PD6、カソード = +3V3)。SOD-323 は 1 = カソード、2 = アノード(**要確認**) |
-| R4 | 1kΩ | R_0603 | ジャックの Tip との直列 |
-| J2 | 3.5mm TRS ジャック | 未割り当て | 実部品のピンに合わせて、シンボルを差し替える |
-| JP1 | ソルダージャンパ | 未割り当て | Ring ↔ +5V |
-| J3 | 1x03 ヘッダ | 未割り当て | 1 = +5V、2 = DIN、3 = GND |
-| J4 | 1x02 ヘッダ | 未割り当て | 1 = SWIO、2 = GND(WCH-LinkE) |
-
-## ネットリスト
-
-| ネット | 接続 |
-| --- | --- |
-| +5V | J1.VBUS, C1.+, C2, C3, U1.VIN, JP1.2, J3.1 |
-| +3V3 | U1.VOUT, C4, U2.VDD(pin 4), C5, R3.1, D1.K |
-| GND | J1.GND・SHIELD, R1.2, R2.2, C1.-, C2, C3, C4, C5, U1.VSS, U2.VSS(pin 2), J2.Sleeve, J3.3, J4.2 |
-| CC1 / CC2 | J1.CC1 – R1 / J1.CC2 – R2 |
-| LINK_MCU | U2.PD6(pin 1), R3.2, D1.A, R4.1 |
-| LINK_TIP | R4.2, J2.Tip |
-| LINK_RING | J2.Ring, JP1.1 |
-| LED_DIN | U2.PC4(pin 7), J3.2 |
-| SWIO | U2.PD1/SWIO(pin 8), J4.1 |
-| NC | U2 の pin 3(PA2)・pin 5(PC1)・pin 6(PC2) |
+| U1, U2 | CH32V003J4M6 | `MCU_WCH_RiscV:CH32V003JxMx` | `Package_SO:JEITA_SOIC-8_3.9x4.9mm_P1.27mm` |
+| U3, U4 | XC6206P332MR | `Regulator_Linear:XC6206PxxxMR` | `Package_TO_SOT_SMD:SOT-23-3` |
+| J3 | USB-C(電源のみ) | `Connector:USB_C_Receptacle_USB2.0_14P` | **未割り当て** |
+| J2 | 3.5mm ジャック | `Connector_Audio:AudioJack3` | **未割り当て** |
+| J1 | 3.5mm プラグ(ケーブル側) | `Connector_Audio:AudioPlug3` | 基板には載らない |
+| J4, J5 | SWIO 書き込み(2 ピン) | `Connector_Generic:Conn_01x02` | `PinHeader_1x02_P2.54mm_Vertical` |
+| J6 | LED(5V / DIN / GND) | `Connector_Generic:Conn_01x03` | `PinHeader_1x03_P2.54mm_Vertical` |
+| R1, R2 | 10kΩ | `Device:R` | `R_0603_1608Metric` |
+| R3, R4 | 5.1kΩ | `Device:R` | `R_0603_1608Metric` |
+| R5, R6 | 1kΩ | `Device:R` | `R_0603_1608Metric` |
+| C1, C2, C5, C6 | 1µF | `Device:C` | `C_0603_1608Metric` |
+| C3, C7 | 0.1µF | `Device:C` | `C_0603_1608Metric` |
+| C4, C8 | 100µF | `Device:C_Polarized` | `CP_Elec_6.3x5.4` |
+| D1, D2 | BAT54WS | `Device:D_Schottky` | `Diode_SMD:D_SOD-323` |
 
 ## 注意点
 
 仕様書の 3.3 に詳しい。要点:
 
-1. **pin 8(SWIO)を GPIO や USART にしない**。PD4 / PD5 / PD1 が同じピン。ファームで PD5 を触ると書き込めなくなる恐れ。
+1. **pin 8(SWIO)を GPIO や USART にしない**。PD1 / PD4 / PD5 が同じピン。PD5 を触ると書き込めなくなる恐れ。
 2. **pin 1 は PD6 と PA1 の共用**。クリスタルを付けない。
-3. **PD6 は 5V トレラントではない**。Ring(+5V)の抜き差しで一瞬ショートするので、R4 とクランプ D1 で守る。
-4. **オープンドレインにはプルアップ(R3)が必須**。
-5. **JP1**: 両方のボードを USB で給電する場合は、**JP1 を開いたまま**にする(2 つの 5V が並列になり、逆流する)。給電するのは片方だけにして、そちらだけ JP1 を閉じる。
-6. **3.3V の電源**: XC6206 は最大 200mA。LED(5V)は +5V から直接取り、3.3V からは取らない。
-7. **LED の電流**: SK6812mini-e は 1 個あたり最大約 60mA。USB の 5V の供給能力(CC の 5.1kΩ 直結では、ソースが 500mA〜3A を広告する)と、個数に注意。
+3. **PD6 は 5V トレラントではない**。Ring(+5V)の抜き差しで一瞬ショートするので、R5・R6 と D1・D2 で守る。
+4. **オープンドレインにはプルアップ(R1・R2)が必須**。
+5. **2 枚の USB 電源を並列にしない**。現状の回路では、右の基板の 5V は左の基板から Ring 経由で受ける前提。右の基板に USB-C を付けて両方を給電すると、2 つの 5V が衝突する。
+6. **LED の電流を Ring に流さない**。3.5mm ジャックの定格はおおむね 1A で、LED(15 個で最大約 0.9A)を流すと近い。LED を付ける右の基板は、自分で給電するのが安全。
 
-## 要確認
+## 未決・要確認
 
-- **KiCad で開いて、ERC を実行する**。シンボルは本ファイルに埋め込んだ簡易版で、標準ライブラリのものではない。差し替えるときは「Update symbols from library」。
-- **XC6206P332MR のピン順**(SOT-23: 1 = VSS、2 = VOUT、3 = VIN)をデータシートで確認する。間違えると、レギュレータが壊れ、MCU に 5V が加わる恐れがある。
-- **BAT54WS(SOD-323)のカソード・アノードの向き**。
-- **USB-C レセプタクルと 3.5mm ジャックの実部品**を決め、シンボルのピンとフットプリントを割り当てる。
-- **J4M6 のピン**は、CH32V003 Datasheet V1.3 の表 2-1 で確認した。
+- **Ring の 5V の向き**: 受け側(右の基板)の Ring に、ショットキーダイオードを直列に入れるか、ソルダージャンパを付けるか。いまは直結。
+- **J2・J3 のフットプリント**: 実部品(USB-C レセプタクル、3.5mm ジャック)を決めて、割り当てる。
 - **半二重モード(`HDSEL`)の動作、通信の L レベルと立ち上がり**は実機で確認する(仕様書の U5)。
+- **BAT54WS(SOD-323)の向き**: 1 = カソード、2 = アノード。データシートで確認。
+- **ERC の再実行**: KiCad で開いて保存し直したら、`kicad-cli sch erc halo-pcb-ch32v003/halo_pcb_ch32v003.kicad_sch` で確認する。

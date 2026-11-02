@@ -5,3 +5,9 @@ dist/
 *.hex
 *.bin
 *.elf
+# KiCad のロック・履歴・個人設定
+*.lck
+.history/
+*.kicad_prl
+*-backups/
+fp-info-cache

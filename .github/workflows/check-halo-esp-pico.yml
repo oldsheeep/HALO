@@ -1,0 +1,29 @@
+name: Check halo-controller-esp32 / picow
+
+# ESP-IDF / Pico SDK が無い環境での、構文の検査(スタブのヘッダ)。ビルドの代わりにはならない。
+on:
+  pull_request:
+    paths:
+      - "halo-controller-esp32/**"
+      - "halo-controller-picow/**"
+      - "halo-link/**"
+      - "halo-bridge/**"
+      - ".github/workflows/check-halo-esp-pico.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "halo-controller-esp32/**"
+      - "halo-controller-picow/**"
+      - "halo-link/**"
+      - "halo-bridge/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash halo-controller-esp32/scripts/check.sh
+      - run: bash halo-controller-picow/scripts/check.sh

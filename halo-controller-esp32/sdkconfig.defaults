@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Copyright (c) 2026 sheeplab
+# ESP-IDF v5.2 以降。I2C のログなどは、既定のまま
+CONFIG_FREERTOS_HZ=1000

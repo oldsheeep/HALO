@@ -1,0 +1,12 @@
+# 取得物(scripts/setup.sh が再現可能に取得する)
+/ext/
+/.toolchain/
+
+# ビルド中間生成物・成果物
+/dist/
+/src/halo.elf
+/src/halo.bin
+/src/halo_ext.bin
+/src/halo.hex
+/src/halo.lst
+/src/halo.map

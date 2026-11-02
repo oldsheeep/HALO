@@ -1,0 +1,24 @@
+name: Test halo-bridge
+
+# halo-bridge のホストでのテスト(模擬の I2C と単線、サニタイザ有効)。halo-link のソースも使う。
+on:
+  pull_request:
+    paths:
+      - "halo-bridge/**"
+      - "halo-link/**"
+      - ".github/workflows/test-halo-bridge.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "halo-bridge/**"
+      - "halo-link/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash halo-bridge/scripts/test.sh

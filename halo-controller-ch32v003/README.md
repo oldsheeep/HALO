@@ -32,6 +32,7 @@ halo-controller-ch32v003/
 │   └── funconfig.h     ch32fun の設定(48MHz)
 ├── variants/           HALO の種類ごとの固定情報
 │   ├── ring12.h        12 個等間隔のリング
+│   ├── ring15.h        15 個等間隔のリング(単色の薄い青、薄い青↔青の回転)
 │   └── ring8_ccw.h     8 個・反時計回り配線のリング
 ├── ext/ch32fun/        (取得物。コミットしない)
 ├── .toolchain/         (取得物。コミットしない)
@@ -78,7 +79,7 @@ variant は HALO の種類ごとに変わる、**ファームウェアに埋め�
 | --- | --- |
 | `HALO_VARIANT_NAME` | variant 名(文字列) |
 | `HALO_LED_COUNT` | SK6812 の個数 |
-| `HALO_LED_ANGLES_DEG` | HALO の基準からの偏角[deg]を、LED が数珠つなぎになっている順に並べたカンマ区切りリスト。例 `0, 30, 60, ..., 330` |
+| `HALO_LED_ANGLES_DEG` | (任意) HALO の基準からの偏角[deg]を、LED が数珠つなぎになっている順に並べたカンマ区切りリスト。例 `0, 30, 60, ..., 330`。**省略すると `HALO_LED_COUNT` で等分した等間隔**(`i * 360 / 個数`)になる。等間隔でない・逆向きの配線のときだけ書く |
 | `halo_fixed_presets[3]` | 固定プリセット 3 パターン |
 
 `HALO_LED_COUNT` と偏角リストの要素数が違うと、`halo_config.h` の `_Static_assert` でビルドエラーになる。
@@ -108,10 +109,40 @@ variant は HALO の種類ごとに変わる、**ファームウェアに埋め�
 色は色環(360°)に等間隔で並べ、隣同士を線形補間する(最後の色は最初の色へ戻る)。
 `period_ms` が 0 でなければ、模様が偏角の増える向きへ等速度で回転する。
 
+### プリセットの書き方(マクロ)
+
+プリセットは構造体を直接書かず、`src/halo_preset.h` のマクロで書く。
+すべてコンパイル時に計算される定数式なので、関数呼び出しや計算は実行時に残らない
+(計算済みの値が `const` データとしてフラッシュに入る)。
+
+| マクロ | 意味 |
+| --- | --- |
+| `HALO_RGB(r, g, b)` | 色。各 0〜255 |
+| `HALO_RGBA(r, g, b, a)` | アルファ付き。`a` は 0〜255(255 = 100%)。色にあらかじめ掛けて暗くする |
+| `HALO_HEX(0xRRGGBB)` | 16 進の色 |
+| `HALO_HEXA(0xRRGGBBAA)` | 16 進のアルファ付きの色。例 `HALO_HEXA(0x4444BB88)` |
+| `HALO_PRESET(period_ms, 色, 色, ...)` | プリセット。色は 1〜4 個。`period_ms` は一周(360°)回る時間で、`0` なら静止。全体の明るさは 100% |
+| `HALO_PRESET_B(brightness, period_ms, 色, ...)` | 全体の明るさ(0〜255)も指定する |
+
+```c
+static const halo_preset_t halo_fixed_presets[] = {
+    // 単色の薄い青 #4444BB88(静止)
+    HALO_PRESET(0, HALO_HEXA(0x4444BB88)),
+    // 薄い青 → 青 → 薄い青 が 6 秒で一周
+    HALO_PRESET(6000, HALO_HEXA(0x4444BB88), HALO_HEX(0x0000FF)),
+    // 暖色の静止(全体の明るさ 25%)
+    HALO_PRESET_B(64, 0, HALO_HEX(0xFFB060)),
+};
+```
+
+- 色は円周に等間隔で並び、最後の色が最初の色へ戻る。2 色なら「A → B → A」が一周になる。
+- 色の個数が 0 個または 5 個以上だと、コンパイルエラーになる(`array is too large` と出る)。
+- 100% の白は、LED 1 個あたり最大約 60mA。個数が多い HALO では全体の明るさ(`HALO_PRESET_B`)や電源容量に注意。
+
 ### variant の追加方法
 
 1. `variants/<name>.h` を作る(`ring12.h` をコピーして編集)。
-2. `HALO_VARIANT_NAME`・`HALO_LED_COUNT`・`HALO_LED_ANGLES_DEG`・`halo_fixed_presets` を定義する。
+2. `HALO_VARIANT_NAME`・`HALO_LED_COUNT`・`halo_fixed_presets`(上のマクロで 3 つ)を定義する。等間隔でなければ `HALO_LED_ANGLES_DEG` も定義する。
 3. `bash halo-controller-ch32v003/scripts/build.sh <name>` でビルドして確認する。
    個数と偏角の不一致はここでエラーになる。
 

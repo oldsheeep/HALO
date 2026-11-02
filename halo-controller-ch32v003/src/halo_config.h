@@ -6,7 +6,7 @@
 // variant ヘッダが定義するもの:
 //   HALO_VARIANT_NAME       文字列
 //   HALO_LED_COUNT          SK6812 の個数
-//   HALO_LED_ANGLES_DEG      数珠つなぎの順の偏角[deg]のカンマ区切りリスト
+//   HALO_LED_ANGLES_DEG      (任意) 数珠つなぎの順の偏角[deg]のカンマ区切りリスト。省略すると等間隔
 //   halo_fixed_presets[3]   固定プリセット(const halo_preset_t)
 #ifndef HALO_CONFIG_H
 #define HALO_CONFIG_H
@@ -24,20 +24,23 @@
 #ifndef HALO_LED_COUNT
 #error "variant に HALO_LED_COUNT が無い"
 #endif
-#ifndef HALO_LED_ANGLES_DEG
-#error "variant に HALO_LED_ANGLES_DEG が無い"
-#endif
 
 #define HALO_FIXED_PRESET_COUNT 3
 #define HALO_ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
 
-// 偏角の並び(LED の接続順)。個数は HALO_LED_COUNT と一致させる。
+// LED の偏角[deg]。i は接続順の番号(0 始まり)。
+//  - variant が HALO_LED_ANGLES_DEG を定義していれば、その並び(個数は HALO_LED_COUNT と一致させる)
+//  - 定義していなければ、360° を HALO_LED_COUNT で等分した等間隔(i * 360 / 個数)
+#ifdef HALO_LED_ANGLES_DEG
 static const uint16_t halo_led_angles_deg[] = {HALO_LED_ANGLES_DEG};
-
-// 個数と偏角配列の長さの不一致はここでビルドエラーになる。
-_Static_assert(HALO_LED_COUNT > 0, "HALO_LED_COUNT must be > 0");
 _Static_assert(HALO_ARRAY_LEN(halo_led_angles_deg) == HALO_LED_COUNT,
                "HALO_LED_ANGLES_DEG length != HALO_LED_COUNT");
+#define HALO_LED_ANGLE_DEG(i) (halo_led_angles_deg[(i)])
+#else
+#define HALO_LED_ANGLE_DEG(i) ((uint16_t)((i) * 360u / HALO_LED_COUNT))
+#endif
+
+_Static_assert(HALO_LED_COUNT > 0, "HALO_LED_COUNT must be > 0");
 _Static_assert(HALO_ARRAY_LEN(halo_fixed_presets) == HALO_FIXED_PRESET_COUNT,
                "exactly 3 fixed presets required");
 

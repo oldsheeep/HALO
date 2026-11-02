@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Copyright (c) 2026 sheeplab
 # ツールチェーン(xPack riscv-none-elf-gcc)と ch32fun を、固定バージョンで取得する。
 # 何度実行しても同じ結果になる(取得済みならスキップ)。
 #   bash halo-controller-ch32v003/scripts/setup.sh

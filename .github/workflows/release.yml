@@ -73,6 +73,7 @@ jobs:
             echo "::error::$DIR/dist に成果物がありません"
             exit 1
           fi
+          cp LICENSE THIRD_PARTY_NOTICES.md "$DIR/dist/"
           (cd "$DIR/dist" && zip -r "$GITHUB_WORKSPACE/$DIR.zip" .)
 
       - uses: actions/upload-artifact@v4

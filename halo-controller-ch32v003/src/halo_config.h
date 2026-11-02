@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // variant ごとの固定情報を取り込み、整合性をビルド時に検査する。
 // variant は `make VARIANT=<name>`(= -DHALO_VARIANT_HEADER) で選ぶ。variants/<name>.h を参照。
 //

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 #ifndef _FUNCONFIG_H
 #define _FUNCONFIG_H
 

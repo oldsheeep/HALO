@@ -44,7 +44,8 @@ pre-commit install       # clone / worktree ごとではなくリポジトリ単
 - `halo-<name>/scripts/build.sh`: リポジトリのルートから `bash halo-<name>/scripts/build.sh` で呼ばれる。成果物を `halo-<name>/dist/` に出力する。
 - `halo-<name>/scripts/setup-ci.sh`(任意): ツールチェーンのインストール。`build.sh` の前に CI だけで実行される。
 - `dist/` はコミットしない(`.gitignore` 済み)。
-- CI は `dist/` を `halo-<name>.zip` にして release のアセットにする。
+- CI は `dist/` に `LICENSE` と `THIRD_PARTY_NOTICES.md` を加えて `halo-<name>.zip` にし、release のアセットにする。
+- 自作のソースには SPDX ヘッダが必要(`spdx-header` フック。無いと CI が失敗する)。
 
 `build.sh` が無いディレクトリはビルドされない(release にも載らない)。
 

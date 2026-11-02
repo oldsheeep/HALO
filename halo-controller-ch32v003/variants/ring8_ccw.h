@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // 8 個を 45° 間隔に並べ、配線が反時計回り(偏角が減る向き)に数珠つなぎになっているリング。
 // 偏角は HALO の基準からの角度で、LED の接続順に並べる。
 #define HALO_VARIANT_NAME "ring8_ccw"

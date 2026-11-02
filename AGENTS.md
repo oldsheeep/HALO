@@ -29,6 +29,19 @@ CH32V003 で SK6812mini-e(アドレサブルLED)を制御するプログラム�
 - プロジェクトロゴ(アイコン)
 - その他(今後追加)
 
+## ライセンス
+
+- 自作のソース(`.c` `.h` `.sh` `Makefile`)の先頭に SPDX ヘッダを付ける(ヘッダが無いと pre-commit / CI が失敗する)。
+
+    ```text
+    SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+    Copyright (c) 2026 sheeplab
+    ```
+
+    行コメントの記号は言語に合わせる(C/C++ は `//`、シェル・Makefile は `#`)。シェバン行がある場合はその次の行に置く。
+- 全体は [LICENSE](LICENSE)(PolyForm Noncommercial 1.0.0)。プロジェクトロゴ・アイコンは All rights reserved で、`assets/logo/` に置く。
+- 取り込んだ第三者コードをビルド成果物に含める場合は、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) に入手元と全文を追記する。
+
 ## 設計方針
 
 - **疎結合**: 各ディレクトリ(デバイス)は互いのソースを直接参照しない。デバイス間の情報伝達はプロトコル(BLE の GATT 定義、シリアル/I2C などのバイト列仕様)だけを契約とし、仕様はドキュメントとして明文化する。

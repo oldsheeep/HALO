@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Copyright (c) 2026 sheeplab
 # base...head で差分のあるファイルから、PR に付ける scope を1行ずつ出す。
 #   halo-<scope>/ 配下 → <scope>、それ以外(ルート直下や .github など) → repo
 #

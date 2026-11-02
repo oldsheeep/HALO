@@ -17,7 +17,7 @@ static void render(const halo_preset_t *p, uint32_t t_ms) {
         phase = (uint16_t)((t_ms % p->period_ms) * 360u / p->period_ms);
 
     for (int i = 0; i < HALO_LED_COUNT; i++) {
-        halo_rgb_t c = halo_preset_color_at(p, halo_led_angles_deg[i] % 360, phase);
+        halo_rgb_t c = halo_preset_color_at(p, HALO_LED_ANGLE_DEG(i) % 360, phase);
         frame[i * 3 + 0] = c.g;
         frame[i * 3 + 1] = c.r;
         frame[i * 3 + 2] = c.b;

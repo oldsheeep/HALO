@@ -12,6 +12,8 @@ description: HALO の CI/CD(GitHub Actions と pre-commit)の仕組みと、デ�
 | pre-commit | `.pre-commit-config.yaml` | コミット時(ステージ済みファイルのみ) | linter / formatter を **auto fix** |
 | Lint & Format | `.github/workflows/lint-format.yml` | PR のみ | 差分ファイルを検査(修正はしない)。error はブロック、warn は警告のみ |
 | Auto PR to main | `.github/workflows/auto-pr-to-main.yml` | develop への push | develop → main の PR を作成・更新し、`scope:<scope>` label を付ける |
+| Auto PR for hotfix | `.github/workflows/auto-pr-hotfix.yml` | `hotfix/**` への push | main 向けの PR を作成・更新し、`hotfix` と `scope:<scope>` label を付ける |
+| Sync main to develop | `.github/workflows/sync-main-to-develop.yml` | main への push | develop に無い main のコミット(hotfix)があれば、main → develop の PR を作る |
 | Build & Release | `.github/workflows/release.yml` | main への push | 差分のあるディレクトリだけビルドし release を切る |
 
 ## 初回セットアップ
@@ -26,7 +28,8 @@ pre-commit install       # clone / worktree ごとではなくリポジトリ単
 - Settings → Actions → General → 「Allow GitHub Actions to create and approve pull requests」を有効にする。
 - 自動作成した PR でも lint-format を走らせるため、PAT を secret `PR_CREATE_TOKEN` に登録する(`GITHUB_TOKEN` で作った PR は他のワークフローを起動しない)。未設定でも PR は作られるが、検査は走らない。
 - Settings → General → 「Automatically delete head branches」を有効にする。
-- develop → main の PR は **merge commit** でマージする(squash すると develop が main と食い違い続ける)。
+- develop → main、hotfix → main、main → develop の PR は **merge commit** でマージする(squash すると develop が main と食い違い続け、同期 PR が毎回できる)。
+- label `scope:*` `hotfix` `hotfix-backport` は Actions が自動で作る。
 
 ## pre-commit の使い方
 

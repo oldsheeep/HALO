@@ -35,13 +35,7 @@ jobs:
           fi
 
           # 差分のあるディレクトリから scope を決める(halo-<scope> → <scope>、それ以外は repo)
-          scopes=$(git diff --name-only origin/main...origin/develop | cut -d/ -f1 | sort -u \
-            | while read -r d; do
-                case "$d" in
-                  halo-*) echo "${d#halo-}" ;;
-                  *) echo repo ;;
-                esac
-              done | sort -u)
+          scopes=$(scripts/pr-scopes.sh origin/main origin/develop)
 
           labels=()
           for s in $scopes; do

@@ -3,7 +3,8 @@
 CH32V003 で SK6812mini-e(アドレサブル LED)を制御するファームウェア。
 HALO の種類(variant)ごとに変わる固定情報(LED の個数と偏角、固定プリセット)をビルド時に選べる。
 
-現状は下地のみ: SK6812 ドライバと、固定プリセット 3 パターンを順に表示する点灯デモ。
+SK6812 ドライバと、固定プリセット 3 パターンを順に表示する点灯デモ(AUTO)。
+B 側(マスター)から単線半二重通信 **HALO Link** で、プリセットの実行・LED の直接制御・情報の取得ができる(下の「通信」)。
 
 ## ツールチェーン選定
 
@@ -25,11 +26,15 @@ halo-controller-ch32v003/
 │   ├── setup-ci.sh     CI 用(setup.sh + PATH 追加)
 │   └── build.sh        全 variant をビルドして dist/ に出力
 ├── src/
-│   ├── halo.c          点灯デモの main
+│   ├── halo.c          main(通信の処理と、16ms ごとの描画)
+│   ├── halo_display.[ch]  表示の状態(AUTO / PRESET / DIRECT / OFF)・ステージング・明るさ
+│   ├── link_uart.[ch]  HALO Link のポート(USART1 + DMA)
+│   ├── link_slave.[ch] halo-link のスレーブと halo_display をつなぐ
 │   ├── sk6812.[ch]     SK6812mini-e ドライバ
 │   ├── halo_preset.h   プリセットのデータ形式(暫定)とレンダリング
 │   ├── halo_config.h   variant の取り込みとビルド時検査
 │   └── funconfig.h     ch32fun の設定(48MHz)
+├── tests/test.sh       ホストでのテスト(状態遷移と通信のつなぎ)
 ├── variants/           HALO の種類ごとの固定情報
 │   ├── ring12.h        12 個等間隔のリング
 │   ├── ring15.h        15 個等間隔のリング(単色の薄い青、薄い青↔青の回転)
@@ -52,6 +57,40 @@ bash halo-controller-ch32v003/scripts/build.sh ring12   # 1 つだけ
 取得だけ先に行う場合は `bash halo-controller-ch32v003/scripts/setup.sh`。
 
 CI では `scripts/setup-ci.sh` → `scripts/build.sh` の順で呼ばれ、全 variant が `dist/` に出る。
+
+## 通信(HALO Link)
+
+B 側(マスター)と単線半二重・115200 bps 8N1 で通信するスレーブとして動く。仕様は
+[docs/halo-link-spec.md](../docs/halo-link-spec.md)、ライブラリは [halo-link/](../halo-link/)
+(ビルド時に `../halo-link` から取り込む。`deps.txt` で CI の再ビルド対象にもなる)。
+**既定で有効**。通信が無くても、起動時は AUTO(従来どおりのデモ動作)で動く。
+
+| 項目 | 内容 |
+| --- | --- |
+| ピン | USART1 の既定ピン。**PD5 = TX、PD6 = RX** |
+| 回路 | ダイオード方式(TX をショットキーのカソードへ、アノードと RX を信号線へ)。プルアップは B 側に 1 か所。仕様の 3.1 を参照 |
+| 受信 | DMA1 チャンネル 5 の循環バッファ(64 バイト)。SK6812 の送信中(割り込み禁止)も取りこぼさない |
+| printf デバッグ | PD5 を使うため無効(`src/funconfig.h`)。通信を有効にしたまま有効化するとビルドエラー |
+| 状態 | AUTO(起動時)/ PRESET / DIRECT / OFF。全体の明るさ(RAM のみ、起動時 255)。SET_LEDS / FILL はステージングに書き、SHOW で反映 |
+
+通信を無効にしてビルドする(PD5 / PD6 を使わない。halo-link はリンクされない):
+
+```bash
+HALO_LINK_ENABLE=0 bash halo-controller-ch32v003/scripts/build.sh ring12
+# または make HALO_LINK_ENABLE=0 VARIANT=ring12 build
+```
+
+固定プリセット・variant・`halo_preset_t` は通信で書き換えない。HELLO の LED 個数・GET_ANGLES の偏角は
+variant の値から返す。
+
+ホストのテスト(表示の状態遷移と、halo-link のスレーブとのつなぎ。全 variant):
+
+```bash
+bash halo-controller-ch32v003/tests/test.sh
+```
+
+**実機での疎通は未確認**(ビルドとホストのテストのみ)。回路の L レベル・115200 bps が出るか等は
+仕様の未決事項 U5 を参照。
 
 ## 書き込み(WCH-LinkE)
 

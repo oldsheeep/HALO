@@ -1,0 +1,60 @@
+name: Auto PR for hotfix
+
+# hotfix/** ブランチへの push で、main 向けの PR を即座に作る・更新する。
+# develop を経由せず main に反映したいとき(緊急ビルド、CI の修正など)に使う。
+# main にマージされたあとの develop への反映は sync-main-to-develop.yml が PR を作る。
+# GITHUB_TOKEN で作った PR は他のワークフロー(lint-format)を起動しないため、
+# リポジトリ secret PR_CREATE_TOKEN(PAT)を設定すること。
+on:
+  push:
+    branches: ["hotfix/**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or update PR
+        env:
+          GH_TOKEN: ${{ secrets.PR_CREATE_TOKEN || secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet "origin/main...origin/$BRANCH"; then
+            echo "main との差分が無いので PR は作らない"
+            exit 0
+          fi
+
+          gh label create hotfix --description "main へ直接反映する緊急修正" --color D93F0B --force
+          labels=(--add-label hotfix)
+          for s in $(scripts/pr-scopes.sh origin/main "origin/$BRANCH"); do
+            gh label create "scope:$s" --description "$s に関する変更" --force
+            labels+=(--add-label "scope:$s")
+          done
+
+          {
+            echo "develop を経由せず main に反映する hotfix。マージするとビルドと release が走る。"
+            echo "マージ後、main → develop の同期 PR が自動で作られる(merge commit でマージすること)。"
+            echo
+            echo "## 含まれるコミット"
+            git log "origin/main..origin/$BRANCH" --pretty='- %s (%h)'
+          } > body.md
+
+          number=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$number" ]]; then
+            gh pr edit "$number" --body-file body.md "${labels[@]}"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "hotfix: $(git log -1 --pretty=%s "origin/$BRANCH")" \
+              --body-file body.md
+            number=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number')
+            gh pr edit "$number" "${labels[@]}"
+          fi

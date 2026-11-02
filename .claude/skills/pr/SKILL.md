@@ -14,6 +14,7 @@ description: HALO リポジトリでプルリクエスト(PR)を作る・更新�
 
 - 基本は `develop`。
 - `main` 向けの PR は、ユーザーが指示したときだけ作る(マージで Actions が走り、変更のあったディレクトリがビルドされるため)。
+- `hotfix/*` ブランチはベースが `main`(push で PR が自動作成される。手順は `hotfix` skill)。
 
 ## label(scope)
 

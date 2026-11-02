@@ -27,6 +27,7 @@ monorepo。デバイス・役割ごとにトップレベルのディレクトリ
 | `halo-controller/` | B 側(マスター)の CH32V003 版。A 側へプリセット実行・LED 直接制御・情報要求を送る |
 | `halo-controller-esp32/` | B 側(マスター)の ESP32 版 |
 | `halo-controller-picow/` | B 側(マスター)の Pico W 版 |
+| `halo-pcb-ch32v003/` | CH32V003J4M6 のコントローラ基板の回路図(KiCad) |
 | [docs/](docs/) | 設計メモ・仕様書(デバイス間プロトコルなど) |
 | `.github/` | GitHub Actions、PR テンプレート、CODEOWNERS |
 | `.claude/skills/` | 反復作業の手順(エージェント向け skill) |

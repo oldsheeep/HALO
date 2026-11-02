@@ -1,0 +1,63 @@
+name: Sync main to develop
+
+# main にだけ存在する(develop に無い)コミット = hotfix を、develop に取り込む PR を作る。
+# 通常の develop → main(merge commit)では main 側に新しいコミットが無いので何もしない。
+# このため develop → main は merge commit でマージすること(squash だと毎回この PR ができる)。
+# PR_CREATE_TOKEN が未設定だと、作られた PR で lint-format が走らない。
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: sync-main-to-develop
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or update sync PR
+        env:
+          GH_TOKEN: ${{ secrets.PR_CREATE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # merge commit は除く。通常のリリースでは main 側の merge commit だけが増える
+          if [[ -z "$(git log origin/develop..origin/main --no-merges --oneline)" ]]; then
+            echo "develop に無い main のコミットは無いので何もしない"
+            exit 0
+          fi
+
+          gh label create hotfix-backport --description "hotfix を develop に取り込む" --color FBCA04 --force
+          labels=(--add-label hotfix-backport)
+          for s in $(scripts/pr-scopes.sh origin/develop origin/main); do
+            gh label create "scope:$s" --description "$s に関する変更" --force
+            labels+=(--add-label "scope:$s")
+          done
+
+          {
+            echo "main にだけあるコミット(hotfix)を develop に取り込む。**merge commit でマージすること。**"
+            echo "コンフリクトする場合は、\`hotfix\` skill(.claude/skills/hotfix/SKILL.md)の手順に従ってローカルで解消する。"
+            echo
+            echo "## develop に無いコミット"
+            git log origin/develop..origin/main --no-merges --pretty='- %s (%h)'
+          } > body.md
+
+          number=$(gh pr list --base develop --head main --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$number" ]]; then
+            gh pr edit "$number" --body-file body.md "${labels[@]}"
+          else
+            gh pr create --base develop --head main \
+              --title "Sync: main → develop (hotfix)" \
+              --body-file body.md
+            number=$(gh pr list --base develop --head main --state open --json number --jq '.[0].number')
+            gh pr edit "$number" "${labels[@]}"
+          fi

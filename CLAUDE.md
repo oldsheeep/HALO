@@ -16,6 +16,7 @@
   - `feature` 新機能 / `fix` 不具合修正 / `refactor` 挙動を変えない整理
   - `docs` ドキュメント・仕様書 / `design` 図面・ロゴ・アイコン
   - `ci` GitHub Actions・スクリプト / `chore` その他
+  - `hotfix` develop を経由せず main に即時反映する緊急修正(下記)
 - `<scope>`: 対象の機能 = トップレベルディレクトリ名から `halo-` を除いたもの。複数にまたがる場合は主となるものを選ぶ。リポジトリ全体なら `repo`。
   - 例: `halo-controller-ch32v003` → `controller-ch32v003`、`halo-controller` → `controller`
 - `<summary>`: 内容を表す短い英語の kebab-case(小文字・数字・ハイフンのみ)
@@ -27,10 +28,12 @@
 - `fix/controller-ch32v003-reset-timing`
 - `docs/repo-ble-gatt-spec`
 - `ci/repo-path-filtered-build`
+- `hotfix/repo-fix-release-workflow`
 
 運用:
 
 - 作業ブランチは `develop` から切り、`develop` へマージする。`main` への直接コミットはしない。
+- 例外: `hotfix/*` は **main から**切り、main へ直接 PR する(push で PR が自動作成される)。マージ後は main → develop の同期 PR を必ずマージする。手順は `hotfix` skill。
 - `main` へのマージはビルド(Actions)が走るため、ユーザーの指示があるときだけ行う。
 - 1ブランチ = 1機能(1スコープ)。複数ディレクトリを横断する変更は、仕様(`docs`)と各実装に分けるのが望ましい。
 - 新しいトップレベルディレクトリを追加したら、`AGENTS.md` の構成表を更新し、必要ならここの scope 例も更新する。ビルド対象にするなら `scripts/build.sh` を置く(`ci` skill)。
@@ -53,6 +56,7 @@
 | skill | 使う場面 |
 | --- | --- |
 | `pr` | PR を作る・更新する(ベースブランチ、`scope:<scope>` label、本文の書き方) |
+| `hotfix` | develop を経由せず main に即時反映する(緊急ビルド、CI 修正)。main → develop への戻し方 |
 | `ci` | pre-commit・Actions・ビルド/release の仕組み、`build.sh` の規約、新しい `halo-*` ディレクトリを足すとき |
 
 - 反復する操作は `scripts/` にスクリプト化し、使い方・前提・注意点をその操作の skill に書く(詳細は AGENTS.md の「反復作業の扱い」)。

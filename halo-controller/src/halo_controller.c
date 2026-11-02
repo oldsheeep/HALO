@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // Copyright (c) 2026 sheeplab
-// HALO 制御デモ(B 側 / マスター)。A 側へ接続し、固定プリセット → 虹色のカスタム点灯 → 消灯を繰り返す。
+// HALO 制御デモ(B 側 / マスター)。A 側へ接続し、固定プリセット → 虹色のカスタム点灯 →
+// 消灯を繰り返す。
 #include "ch32fun.h"
 #include "halo_link.h"
 #include "port.h"
@@ -21,12 +22,18 @@ static halo_rgb_t hue_to_rgb(uint16_t h) {
     uint8_t up = (uint8_t)((h % 60) * 255 / 59);
     uint8_t down = (uint8_t)(255 - up);
     switch (region) {
-    case 0: return (halo_rgb_t){255, up, 0};
-    case 1: return (halo_rgb_t){down, 255, 0};
-    case 2: return (halo_rgb_t){0, 255, up};
-    case 3: return (halo_rgb_t){0, down, 255};
-    case 4: return (halo_rgb_t){up, 0, 255};
-    default: return (halo_rgb_t){255, 0, down};
+    case 0:
+        return (halo_rgb_t){255, up, 0};
+    case 1:
+        return (halo_rgb_t){down, 255, 0};
+    case 2:
+        return (halo_rgb_t){0, 255, up};
+    case 3:
+        return (halo_rgb_t){0, down, 255};
+    case 4:
+        return (halo_rgb_t){up, 0, 255};
+    default:
+        return (halo_rgb_t){255, 0, down};
     }
 }
 

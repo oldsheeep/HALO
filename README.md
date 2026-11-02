@@ -24,6 +24,7 @@ monorepo。デバイス・役割ごとにトップレベルのディレクトリ
 | --- | --- |
 | [halo-controller-ch32v003/](halo-controller-ch32v003/) | CH32V003 で SK6812mini-e を制御するファームウェア |
 | `halo-link/` | 単線半二重通信のライブラリ(A・B 側で共有。仕様は [docs/halo-link-spec.md](docs/halo-link-spec.md)) |
+| `halo-bridge/` | I2C ブリッジのライブラリ(ESP32 / Pico W ⇔ B 側の CH32V003。仕様は [docs/halo-bridge-spec.md](docs/halo-bridge-spec.md)) |
 | `halo-controller/` | B 側(マスター)の CH32V003 版。A 側へプリセット実行・LED 直接制御・情報要求を送る |
 | `halo-controller-esp32/` | B 側(マスター)の ESP32 版 |
 | `halo-controller-picow/` | B 側(マスター)の Pico W 版 |

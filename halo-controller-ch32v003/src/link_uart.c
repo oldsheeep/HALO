@@ -7,7 +7,8 @@
 #include "ch32fun.h"
 
 #if FUNCONF_USE_DEBUGPRINTF || FUNCONF_USE_UARTPRINTF
-#error "printf デバッグが PD5(USART1 TX)を使う。通信を有効にするなら funconfig.h で無効にする"
+#error                                                                                             \
+    "printf デバッグが PD5 を使う。J4M6 では PD5 は SWIO(pin 8)と同じピンなので、通信を有効にするなら funconfig.h で無効にする"
 #endif
 #if FUNCONF_SYSTICK_USE_HCLK != 1 || FUNCONF_SYSTEM_CORE_CLOCK != 48000000
 #error "link_uart.c は SysTick=HCLK, 48MHz 前提(now_us)"
@@ -19,19 +20,22 @@ static volatile uint8_t rx_buf[LINK_UART_RX_BUF_LEN];
 static uint8_t rx_tail;
 
 void link_uart_init(void) {
-    RCC->APB2PCENR |= RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1;
+    RCC->APB2PCENR |= RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1 | RCC_APB2Periph_AFIO;
     RCC->AHBPCENR |= RCC_AHBPeriph_DMA1;
 
-    // PD5 = TX(複合機能の push-pull。ダイオードのカソードへ)、PD6 = RX(プルアップ入力)
-    GPIOD->CFGLR = (GPIOD->CFGLR & ~((0xf << (5 * 4)) | (0xf << (6 * 4)))) |
-                   ((GPIO_Speed_10MHz | GPIO_CNF_OUT_PP_AF) << (5 * 4)) |
-                   (GPIO_CNF_IN_PUPD << (6 * 4));
-    GPIOD->BSHR = 1 << 6; // プルアップ
+    // 信号線は PD6 の 1 ピンだけ。USART1 をリマップ 2(RM1 = 1、RM = 0)にして TX を PD6 に移し、
+    // 半二重モード(HDSEL)で TX ピンの 1 本で送受信する。
+    // PD5 は触らない: J4M6(SOP8)では PD5 が SWIO(PD1)と同じピン(pin 8)に引き出されている。
+    AFIO->PCFR1 = (AFIO->PCFR1 & ~(AFIO_PCFR1_USART1_REMAP | AFIO_PCFR1_USART1_REMAP_1)) |
+                  AFIO_PCFR1_USART1_REMAP_1;
+    // PD6 = 複合機能のオープンドレイン。H は外付けのプルアップが作る(内部プルアップは使えない)。
+    GPIOD->CFGLR =
+        (GPIOD->CFGLR & ~(0xf << (6 * 4))) | ((GPIO_Speed_10MHz | GPIO_CNF_OUT_OD_AF) << (6 * 4));
 
-    // 115200 8N1
+    // 115200 8N1、半二重。自分の送信も RX に返る(ライブラリが除去する)。
     USART1->CTLR1 = 0;
     USART1->CTLR2 = 0;
-    USART1->CTLR3 = USART_CTLR3_DMAR;
+    USART1->CTLR3 = USART_CTLR3_DMAR | USART_CTLR3_HDSEL;
     USART1->BRR = (FUNCONF_SYSTEM_CORE_CLOCK + LINK_UART_BAUD / 2) / LINK_UART_BAUD;
 
     // RX: USART1 → DMA1 チャンネル 5 → rx_buf(循環)

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Copyright (c) 2026 sheeplab
 # 全 variant(または指定した variant)をビルドし、成果物を dist/ に出す。
 #   bash halo-controller-ch32v003/scripts/build.sh            # variants/*.h すべて
 #   bash halo-controller-ch32v003/scripts/build.sh ring12     # 指定のみ

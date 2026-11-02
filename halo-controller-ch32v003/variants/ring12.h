@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // 12 個を等間隔(30°)に並べたリング。
 #define HALO_VARIANT_NAME "ring12"
 #define HALO_LED_COUNT 12

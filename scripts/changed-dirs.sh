@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Copyright (c) 2026 sheeplab
 # ビルド対象ディレクトリを JSON 配列で標準出力に出す。
 #
 #   changed-dirs.sh all              ビルド可能な全ディレクトリ

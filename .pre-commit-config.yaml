@@ -38,6 +38,16 @@ repos:
       - id: markdownlint
         args: [--fix]
 
+  # 自作のソース(.c .h .sh Makefile)に SPDX ヘッダが無いとエラー
+  - repo: local
+    hooks:
+      - id: spdx-header
+        name: SPDX license header
+        language: pygrep
+        entry: 'SPDX-License-Identifier: PolyForm-Noncommercial-1\.0\.0'
+        args: [--negate]
+        files: '\.(c|h|sh)$|(^|/)Makefile$'
+
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
     hooks:

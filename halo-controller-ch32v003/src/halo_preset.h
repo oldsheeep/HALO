@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+// Copyright (c) 2026 sheeplab
 // プリセットのデータ形式(暫定)とレンダリング。
 //
 // 書き換え可能プリセットの書き込みプロトコルは別途 docs/ で検討中のため、ここでは

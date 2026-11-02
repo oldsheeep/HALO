@@ -81,4 +81,8 @@ pre-commit install       # コミット時に差分へ linter / formatter を自
 
 ## ライセンス
 
-未設定。
+Copyright (c) 2026 sheeplab
+
+- **プログラム・図面など**: [PolyForm Noncommercial License 1.0.0](LICENSE)。非商用の利用・改変・再配布は自由。**商用利用は要相談**で、[GitHub の Issue](https://github.com/oldsheeep/HALO/issues) から連絡する。コピーライト表示は必須ではないが、再配布するときは [LICENSE](LICENSE) を同梱する。
+- **プロジェクトロゴ・アイコン**: All rights reserved(無断での利用・再配布は不可)。ロゴは `assets/logo/` に置き、そこに同じ旨の `LICENSE` を置く。
+- **第三者のソフトウェア**: ch32fun(MIT)などは [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照。release の成果物にも `LICENSE` と `THIRD_PARTY_NOTICES.md` を同梱する。

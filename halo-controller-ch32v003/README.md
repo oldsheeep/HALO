@@ -139,6 +139,65 @@ static const halo_preset_t halo_fixed_presets[] = {
 - 色の個数が 0 個または 5 個以上だと、コンパイルエラーになる(`array is too large` と出る)。
 - 100% の白は、LED 1 個あたり最大約 60mA。個数が多い HALO では全体の明るさ(`HALO_PRESET_B`)や電源容量に注意。
 
+### サンプル
+
+#### 等間隔の 15 個(`variants/ring15.h` そのまま)
+
+偏角を省略すると、`HALO_LED_COUNT` で等分(15 個なら 24° 間隔)になる。
+
+```c
+#define HALO_VARIANT_NAME "ring15"
+#define HALO_LED_COUNT 15
+
+static const halo_preset_t halo_fixed_presets[] = {
+    // 0: 単色の薄い青 #4444BB88(静止)
+    HALO_PRESET(0, HALO_HEXA(0x4444BB88)),
+    // 1: 薄い青 → 青 → 薄い青 が 6 秒で一周
+    HALO_PRESET(6000, HALO_HEXA(0x4444BB88), HALO_HEX(0x0000FF)),
+    // 2: 暖色の静止(全体の明るさ 25%)
+    HALO_PRESET_B(64, 0, HALO_HEX(0xFFB060)),
+};
+```
+
+#### 偏角を明示する(8 個・反時計回り配線、`variants/ring8_ccw.h`)
+
+等間隔でない、または配線の向きが逆のときは、LED の接続順に偏角を並べる。個数と一致しないとビルドエラーになる。
+
+```c
+#define HALO_VARIANT_NAME "ring8_ccw"
+#define HALO_LED_COUNT 8
+#define HALO_LED_ANGLES_DEG 0, 315, 270, 225, 180, 135, 90, 45
+
+static const halo_preset_t halo_fixed_presets[] = {
+    // 虹色が 4 秒で一周(全体の明るさ 25%)
+    HALO_PRESET_B(64, 4000, HALO_RGB(255, 0, 0), HALO_RGB(255, 255, 0), HALO_RGB(0, 255, 0),
+                  HALO_RGB(0, 0, 255)),
+    HALO_PRESET_B(64, 0, HALO_RGB(255, 120, 20)),
+    HALO_PRESET_B(48, 8000, HALO_RGB(255, 0, 255), HALO_RGB(0, 255, 255)),
+};
+```
+
+#### 色の書き方の対応
+
+同じ色を別の書き方で書いた例。アルファは、色にあらかじめ掛けて暗くする。
+
+```c
+HALO_RGB(68, 68, 187)         // (68, 68, 187)
+HALO_HEX(0x4444BB)            // 同上
+HALO_RGBA(68, 68, 187, 136)   // アルファ 136(0x88、約 53%)を掛けて (36, 36, 100)
+HALO_HEXA(0x4444BB88)         // 同上
+```
+
+#### 使い方(ビルドから確認まで)
+
+```bash
+# 1. variants/ring15.h を編集する(新しい variant なら作る)
+# 2. ビルド(個数・色の個数の誤りはここでエラーになる)
+bash halo-controller-ch32v003/scripts/build.sh ring15
+# 3. 書き込み(WCH-LinkE 接続時)
+cd halo-controller-ch32v003 && make VARIANT=ring15 flash
+```
+
 ### variant の追加方法
 
 1. `variants/<name>.h` を作る(`ring12.h` をコピーして編集)。

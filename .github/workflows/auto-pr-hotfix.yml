@@ -28,6 +28,25 @@ jobs:
         run: |
           set -euo pipefail
 
+          safe_pr() {
+            local out
+            local status
+            set +e
+            out=$("$@" 2>&1)
+            status=$?
+            set -e
+            if [[ $status -eq 0 ]]; then
+              [[ -n "$out" ]] && echo "$out"
+              return 0
+            fi
+            if grep -q "GitHub Actions is not permitted to create or approve pull requests" <<<"$out"; then
+              echo "::warning::GitHub Actions による PR 作成が許可されていないためスキップします。Settings > Actions > General で 'Allow GitHub Actions to create and approve pull requests' を有効化するか、PR_CREATE_TOKEN を設定してください。"
+              exit 0
+            fi
+            echo "$out" >&2
+            return "$status"
+          }
+
           if git diff --quiet "origin/main...origin/$BRANCH"; then
             echo "main との差分が無いので PR は作らない"
             exit 0
@@ -50,11 +69,11 @@ jobs:
 
           number=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
           if [[ -n "$number" ]]; then
-            gh pr edit "$number" --body-file body.md "${labels[@]}"
+            safe_pr gh pr edit "$number" --body-file body.md "${labels[@]}"
           else
-            gh pr create --base main --head "$BRANCH" \
+            safe_pr gh pr create --base main --head "$BRANCH" \
               --title "hotfix: $(git log -1 --pretty=%s "origin/$BRANCH")" \
               --body-file body.md
             number=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number')
-            gh pr edit "$number" "${labels[@]}"
+            safe_pr gh pr edit "$number" "${labels[@]}"
           fi

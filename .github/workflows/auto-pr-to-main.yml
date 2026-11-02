@@ -1,0 +1,69 @@
+name: Auto PR to main
+
+# develop への push(= 作業ブランチのマージ)で、develop → main の PR を作る・更新する。
+# GITHUB_TOKEN で作った PR は他のワークフロー(lint-format)を起動しない。
+# 検査も走らせるため、リポジトリ secret PR_CREATE_TOKEN(PAT)を設定すること。
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-pr-to-main
+  cancel-in-progress: false
+
+jobs:
+  pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create or update PR
+        env:
+          GH_TOKEN: ${{ secrets.PR_CREATE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet origin/main...origin/develop; then
+            echo "main との差分が無いので PR は作らない"
+            exit 0
+          fi
+
+          # 差分のあるディレクトリから scope を決める(halo-<scope> → <scope>、それ以外は repo)
+          scopes=$(git diff --name-only origin/main...origin/develop | cut -d/ -f1 | sort -u \
+            | while read -r d; do
+                case "$d" in
+                  halo-*) echo "${d#halo-}" ;;
+                  *) echo repo ;;
+                esac
+              done | sort -u)
+
+          labels=()
+          for s in $scopes; do
+            gh label create "scope:$s" --description "$s に関する変更" --force
+            labels+=(--add-label "scope:$s")
+          done
+
+          git log origin/main..origin/develop --pretty='- %s (%h)' > commits.txt
+          {
+            echo "develop の変更を main に反映する。マージするとディレクトリごとのビルドと release が走る。"
+            echo
+            echo "## 含まれるコミット"
+            cat commits.txt
+          } > body.md
+
+          number=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$number" ]]; then
+            gh pr edit "$number" --body-file body.md "${labels[@]}"
+          else
+            gh pr create --base main --head develop \
+              --title "Release: develop → main ($(date -u +%Y-%m-%d))" \
+              --body-file body.md
+            number=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+            gh pr edit "$number" "${labels[@]}"
+          fi

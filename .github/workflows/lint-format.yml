@@ -1,0 +1,51 @@
+name: Lint & Format
+
+# PR のみ。差分ファイルに linter / formatter をかける(修正はしない)。
+#   error: 失敗として PR をブロックする
+#   warn : 警告アノテーションを出すだけでブロックしない
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # warn 扱いにするフック id(.pre-commit-config.yaml と揃える)
+  WARN_HOOKS: markdownlint shellcheck
+
+jobs:
+  lint-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pre-commit==4.7.0
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Error (blocking)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          SKIP=$(echo "$WARN_HOOKS" | tr ' ' ',') \
+            pre-commit run --show-diff-on-failure --color=always \
+            --from-ref "origin/$BASE_REF" --to-ref HEAD
+
+      - name: Warn (non-blocking)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          for hook in $WARN_HOOKS; do
+            pre-commit run "$hook" --color=always \
+              --from-ref "origin/$BASE_REF" --to-ref HEAD \
+              || echo "::warning title=$hook::$hook の指摘があります(ブロックはしません)"
+          done

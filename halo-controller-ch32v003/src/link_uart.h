@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // Copyright (c) 2026 sheeplab
 // HALO Link のポート(CH32V003 の USART1)。halo_link_port_t の write / read / now_us の実体。
-//   TX = PD5、RX = PD6(USART1 の既定ピン)。115200 bps 8N1。
+//   **PD6 の 1 ピンだけ**(USART1 リマップ 2 で TX を PD6 にし、半二重モード)。
+//   オープンドレインなので、外付けのプルアップ(信号線 → 3.3V)が必要。115200 bps 8N1。
 //   RX は DMA1 チャンネル 5 の循環バッファで受けるので、SK6812 の送信中(割り込み禁止)でも
-//   取りこぼさない。単線(ダイオード方式)なので、自分の送信も RX に返る(ライブラリが除去する)。
+//   取りこぼさない。単線なので、自分の送信も RX に返る(ライブラリが除去する)。
 #ifndef LINK_UART_H
 #define LINK_UART_H
 

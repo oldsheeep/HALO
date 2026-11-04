@@ -15,7 +15,7 @@ EXTRA_CFLAGS += -Isrc -Ivariants -DHALO_VARIANT_HEADER='"$(VARIANT).h"' -Werror
 ADDITIONAL_C_FILES += src/sk6812.c src/halo_display.c
 
 # HALO Link(単線半二重通信のスレーブ)。無効にするとき: make HALO_LINK_ENABLE=0 ...
-# 有効なとき USART1 が PD5(TX)・PD6(RX)を使う。halo-link は ../halo-link から取り込む(変更しない)。
+# 有効なとき USART1 が PD6 の 1 ピン(リマップ 2 + 半二重)を使う。halo-link は ../halo-link から取り込む(変更しない)。
 HALO_LINK_ENABLE ?= 1
 EXTRA_CFLAGS += -DHALO_LINK_ENABLE=$(HALO_LINK_ENABLE)
 ifneq ($(HALO_LINK_ENABLE),0)

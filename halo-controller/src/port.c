@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // Copyright (c) 2026 sheeplab
-// halo-link のポート実装。単線(PD6 の 1 ピン、オープンドレイン、仕様 3.1)なので、自分の送信も RX
-// に返る。 受信は割り込みを使わずポーリングし、write 中も 1
-// バイトごとに吸い出して取りこぼしを防ぐ。
+// halo-link のポート実装。単線(PD6 の 1 ピン、オープンドレイン、仕様 3.1)なので、
+// 自分の送信も RX に返る。
+// 受信は割り込みを使わずポーリングし、write 中も 1 バイトごとに吸い出して取りこぼしを防ぐ。
 #include "port.h"
 
 #include "ch32fun.h"
@@ -81,7 +81,7 @@ halo_link_port_t port_init(void) {
     // PD5 は触らない: J4M6(SOP8)では PD5 が SWIO(PD1)と同じピン(pin 8)に引き出されている。
     AFIO->PCFR1 = (AFIO->PCFR1 & ~(AFIO_PCFR1_USART1_REMAP | AFIO_PCFR1_USART1_REMAP_1)) |
                   AFIO_PCFR1_USART1_REMAP_1;
-    // PD6 = 複合機能のオープンドレイン。H は外付けのプルアップ(信号線 → 3.3V)が作る。
+    // PD6 = 複合機能のオープンドレイン。H は外付けのプルアップ(信号線 → +5V)が作る。
     // 内部プルアップは使えないので、プルアップが無いと信号線が H にならず通信できない。
     GPIOD->CFGLR =
         (GPIOD->CFGLR & ~(0xFu << (4 * 6))) | ((GPIO_Speed_10MHz | GPIO_CNF_OUT_OD_AF) << (4 * 6));

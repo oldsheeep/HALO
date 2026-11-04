@@ -6,7 +6,8 @@
 
 #include "halo_link_port.h"
 
-// USART1 を初期化し(PD5 = TX、PD6 = RX、115200 8N1)、ポートを返す。
+// USART1 を初期化し(PD6 の 1 ピン、リマップ 2 + 半二重、オープンドレイン、115200 8N1)、
+// ポートを返す。信号線には外付けのプルアップ(+5V へ)が必要。
 halo_link_port_t port_init(void);
 
 #endif

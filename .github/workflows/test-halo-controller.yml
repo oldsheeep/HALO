@@ -1,0 +1,26 @@
+name: Test halo-controller
+
+# halo-controller のホストでのテスト(ボタンの判定、操作 → A 側への命令。サニタイザ有効)。
+on:
+  pull_request:
+    paths:
+      - "halo-controller/**"
+      - "halo-link/**"
+      - "halo-bridge/**"
+      - ".github/workflows/test-halo-controller.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "halo-controller/**"
+      - "halo-link/**"
+      - "halo-bridge/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash halo-controller/scripts/test.sh

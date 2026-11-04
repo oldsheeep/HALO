@@ -19,6 +19,15 @@
 extern "C" {
 #endif
 
+// スレーブの状態を、I2C の割り込み(on_write / on_read)と、メインループ(poll
+// など)の両方が書き換える。
+// 割り込みと競合する短い区間を、これで囲む。割り込みを止められる環境では、割り込みを禁止・許可する
+// 関数に定義し直す(ホストのテストや、割り込みを使わない環境では、何もしなくてよい)。
+#ifndef HALO_BRIDGE_CRITICAL_ENTER
+#define HALO_BRIDGE_CRITICAL_ENTER() ((void)0)
+#define HALO_BRIDGE_CRITICAL_EXIT() ((void)0)
+#endif
+
 #define HALO_BRIDGE_PROTO_VERSION 1
 #define HALO_BRIDGE_DEFAULT_ADDR 0x32 // I2C の 7 ビットアドレス
 #define HALO_BRIDGE_FRAME_LEN HALO_LINK_FRAME_LEN

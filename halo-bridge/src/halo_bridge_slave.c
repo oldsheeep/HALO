@@ -103,12 +103,14 @@ void halo_bridge_slave_poll(halo_bridge_slave_t *s) {
             sent += n;
         }
         if (sent < HALO_BRIDGE_FRAME_LEN) {
+            HALO_BRIDGE_CRITICAL_ENTER();
             s->status = (uint8_t)((s->status & ~HALO_BRIDGE_ST_BUSY) | HALO_BRIDGE_ST_TIMEOUT);
             s->state = ST_IDLE;
+            HALO_BRIDGE_CRITICAL_EXIT();
         } else {
-            s->state = ST_WAIT;
             s->t0 = s->link.now_us(s->link.ctx);
             halo_link_parser_init(&s->parser, HALO_LINK_SOF_RES);
+            s->state = ST_WAIT;
         }
     } else if (s->state == ST_WAIT) {
         uint8_t tmp[HALO_LINK_FRAME_LEN];
@@ -122,18 +124,24 @@ void halo_bridge_slave_poll(halo_bridge_slave_t *s) {
                 // 照合: 要求と同じ SEQ とコマンド。単線に残っていた古い応答は捨てる
                 if (f.seq != s->req[1] || f.cmd != (uint8_t)(s->req[2] | 0x80))
                     continue;
+                HALO_BRIDGE_CRITICAL_ENTER();
                 halo_link_frame_encode(&f, s->resp);
                 s->status = (uint8_t)((s->status & ~HALO_BRIDGE_ST_BUSY) | HALO_BRIDGE_ST_READY);
                 s->state = ST_IDLE;
+                HALO_BRIDGE_CRITICAL_EXIT();
             }
         }
         now = s->link.now_us(s->link.ctx);
         if (s->state == ST_WAIT && (uint32_t)(now - s->t0) >= HALO_BRIDGE_LINK_TIMEOUT_US) {
+            HALO_BRIDGE_CRITICAL_ENTER();
             s->status = (uint8_t)((s->status & ~HALO_BRIDGE_ST_BUSY) | HALO_BRIDGE_ST_TIMEOUT);
             s->state = ST_IDLE;
+            HALO_BRIDGE_CRITICAL_EXIT();
         }
     }
+    HALO_BRIDGE_CRITICAL_ENTER();
     update_int(s);
+    HALO_BRIDGE_CRITICAL_EXIT();
 }
 
 void halo_bridge_slave_hold(halo_bridge_slave_t *s, bool hold) { s->hold = hold; }
@@ -141,9 +149,11 @@ void halo_bridge_slave_hold(halo_bridge_slave_t *s, bool hold) { s->hold = hold;
 bool halo_bridge_slave_link_busy(const halo_bridge_slave_t *s) { return s->state == ST_WAIT; }
 
 void halo_bridge_slave_post_event(halo_bridge_slave_t *s, halo_bridge_evt_t type, uint8_t arg) {
+    HALO_BRIDGE_CRITICAL_ENTER();
     s->ev.type = (uint8_t)type;
     s->ev.arg = arg;
     s->ev.seq++;
     s->status |= HALO_BRIDGE_ST_EVENT;
     update_int(s);
+    HALO_BRIDGE_CRITICAL_EXIT();
 }
